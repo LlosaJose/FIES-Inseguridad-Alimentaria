@@ -1,0 +1,791 @@
+#Paquetes
+
+install.packages("foreign")
+install.packages("ltm")
+install.packages("mirt")
+install.packages("mokken")
+install.packages("psych")
+install.packages("RM.weights")
+
+library(mirt)
+library(foreign)
+library(psych)
+library(GPArotation)
+library(writexl)
+library(mokken)
+library(ltm)
+library(psych)
+library(lavaan)
+library(semPlot)
+library(dplyr)
+library(RM.weights)
+
+#================
+##Abrir data frame 
+#================
+setwd('C:\\Users\\llosa\\Facultad Padre Ossó\\Grupo Investigacion Educacion Social - Documentos\\2026 Inseguridad alimentaria\\0.Bases de datos\\BD 2024 FOESSA - Análisis Jose\\')
+BBDD_Foessa<-read.spss("2024_BBDD_FOESSA.sav", to.data.frame=TRUE)
+
+
+
+#Base total
+
+FIES_FOESSA <- read.csv("FIES_FOESSA.csv", header = TRUE)
+
+head(FIES_FOESSA)
+str(FIES_FOESSA)
+summary(FIES_FOESSA)
+
+
+#Submuestras EFA - CFA
+
+BBDD_EFA <- read.csv("EFA.csv", header = TRUE, sep = ";")
+head(BBDD_EFA)
+str(BBDD_EFA)
+summary(BBDD_EFA)
+
+
+BBDD_CFA <- read.csv("CFA.csv", header = TRUE, sep = ";")
+head(BBDD_EFA)
+str(BBDD_EFA)
+summary(BBDD_EFA)
+
+
+#Cambiar escala a las vars FIES (en el ejemplo se convierten a numéricas)
+
+cols<-c("E84_1R", "E84_2R", "E84_3R", "E84_4R", "E84_5R", 
+         "E84_6R", "E84_7R", "E84_8R")
+BBDD_CFA[cols] <- lapply(BBDD_CFA[cols], as.ordered)
+BBDD_CFA$A2 <- as.factor(BBDD_CFA$A2)
+sapply(BBDD_CFA, class)
+
+BBDD_EFA[cols] <- lapply(BBDD_EFA[cols], as.numeric)
+sapply(BBDD_EFA, class)
+
+FIES_FOESSA[cols] <- lapply(FIES_FOESSA[cols], as.numeric)
+sapply(FIES_FOESSA, class)
+
+
+
+#Base sólo con las variables del FIES
+vars_FIES <- FIES_FOESSA[, c("E84_1R", "E84_2R", "E84_3R", "E84_4R", "E84_5R",
+                             "E84_6R", "E84_7R", "E84_8R")]
+
+
+sapply(vars_FIES, class)
+head(vars_FIES)
+summary(vars_FIES)
+
+
+
+#===============================
+#Validez estructura EFA - CFA
+#===============================
+
+###EFA Validación
+
+# Correlaciones tetracóricas
+Matriz_Validacion <- tetrachoric(BBDD_EFA)$rho
+
+KMO(Matriz_Validacion)
+
+cortest.bartlett(
+  Matriz_Validacion,
+  n = nrow(BBDD_EFA )
+)
+
+
+# EFA 1 factor y prueba var explicada
+efa_Validacion <- fa(BBDD_EFA ,
+          nfactors = 1,
+          n.obs = nrow(BBDD_EFA ),
+          fm = "minres",
+          rotate = "oblimin",
+          cor = "tetrachoric",
+          scores = "regression")
+
+# Resultados
+print(efa_Validacion$loadings, cutoff = .30)
+efa_Validacion$communality
+
+
+###CFA Valdación
+
+#Especificación del modelo conceptual (unidimensional)
+Onefactor<-'FIES =~ E84_1R + E84_2R + E84_3R + E84_4R + E84_5R + 
+  E84_6R + E84_7R + E84_8R'
+
+
+
+#realización del AFC para la primera estructura
+CFAone <- cfa(Onefactor, data=BBDD_CFA, estimator="DWLS", ordered=names(BBDD_CFA))
+summary(CFAone, fit.measures=TRUE)
+
+fitMeasures(CFAone)
+semPaths(CFAone, intercepts = FALSE,edge.label.cex=1.5, optimizeLatRes = TRUE, groups = "lat",pastel = TRUE, exoVar = FALSE, sizeInt=5,edge.color ="black",esize = 6, label.prop=2,sizeLat = 6,"std", layout="circle2")
+
+#Consistencia interna Kuder-Richardson (KR20) https://methods.sagepub.com/ency/edvol/the-sage-encyclopedia-of-communication-research-methods/chpt/reliability-kuderrichardson-formula#_
+#Se calcula el alpha, ya que matemáticame es el mismo cálculo.
+#Calcular el coeficiente y resultado (raw alpha y "if item dropped")
+
+
+
+fiabilidad <- alpha(vars_FIES)
+
+print(fiabilidad)
+
+
+#-----------------------
+#Invarianza género
+#-----------------------
+
+# Baseline
+
+base.line <- cfa(Onefactor, data = BBDD_CFA, estimator = "DWLS", orthogonal=FALSE)
+
+
+# configural invariance
+
+inv.conf <- cfa(Onefactor, data = BBDD_CFA, group = "A2", estimator = "DWLS")
+
+# Metric invariance
+
+inv.metric <- cfa(Onefactor, data = BBDD_CFA, group = "A2", estimator = "DWLS", group.equal = "loadings")
+
+# Scalar invariance
+inv.scalar <- cfa(Onefactor, data = BBDD_CFA, group = "A2",
+                  group.equal = c("thresholds", "loadings"), estimator = "DWLS")
+
+
+# strict invariance
+inv.strict <- cfa(Onefactor, data = BBDD_CFA, group = "A2",
+                  group.equal = c("thresholds", "loadings", "residuals"), estimator = "DWLS")
+
+
+
+# model comparison tests
+fitMeasures(base.line)
+fitMeasures(inv.conf)
+fitMeasures(inv.metric)
+fitMeasures(inv.scalar)
+fitMeasures(inv.strict)
+
+
+fit.stats <- rbind(fitmeasures(base.line, fit.measures = c("chisq", "df", "rmsea","srmr", "tli", "cfi", "aic")),
+                   fitmeasures(inv.conf, fit.measures = c("chisq", "df", "rmsea","srmr", "tli", "cfi", "aic")),
+                   fitmeasures(inv.metric, fit.measures = c("chisq", "df", "rmsea","srmr", "tli", "cfi", "aic")),
+                   fitmeasures(inv.scalar, fit.measures = c("chisq", "df", "rmsea","srmr", "tli", "cfi", "aic")),
+                   fitmeasures(inv.strict, fit.measures = c("chisq", "df", "rmsea","srmr", "tli", "cfi", "aic")))
+
+rownames(fit.stats) <- c("baseline", "configural", "metric","scalar", "strict")
+fit.stats
+
+
+#Guardar los ajustes de los modelos de invarianza como un Excel
+
+fit.stats.excel <- data.frame(
+  Modelo = rownames(fit.stats),
+  fit.stats,
+  row.names = NULL
+)
+
+write_xlsx(as.data.frame(fit.stats.excel), "invarianza.xlsx")
+
+
+
+
+
+
+
+
+
+#===============================
+#ANALISIS FACTORIAL EXPLORATORIO Puntuaciones factoriales (Total muestra)
+#===============================
+
+# Correlaciones tetracóricas
+
+
+
+Matriz <- tetrachoric(vars_FIES)$rho
+
+
+KMO(Matriz)
+
+cortest.bartlett(
+  Matriz,
+  n = nrow(vars_FIES)
+)
+
+# Número de factores
+fa.parallel(Matriz,
+            n.obs = nrow(vars_FIES),
+            fa = "fa")
+
+# AFE 2 factores
+efa2 <- fa(vars_FIES,
+          nfactors = 2,
+          n.obs = nrow(vars_FIES),
+          fm = "minres",
+          rotate = "oblimin",
+          cor = "tetrachoric",
+          scores = "regression")
+
+
+# Resultados 2 Factores
+print(efa2$loadings, cutoff = .30)
+efa2$communality
+
+
+# AFE 1 factor
+efa <- fa(vars_FIES,
+          nfactors = 1,
+          n.obs = nrow(vars_FIES),
+          fm = "minres",
+          rotate = "oblimin",
+          cor = "tetrachoric",
+          scores = "regression")
+
+
+# Resultados 1 factor
+print(efa$loadings, cutoff = .30)
+efa$communality
+
+
+
+
+
+
+#guardar puntuaciones 1 factor
+FIES_FOESSA$score_regresion <- as.vector(efa$scores)
+
+write_xlsx(FIES_FOESSA, "FIES_Punt_EFA.xlsx")
+
+
+
+
+#==========================================================
+#RASCH FAO (RM Weights)
+#==========================================================
+
+modelo_fao <- RM.w(.data = vars_FIES, .w = FIES_FOESSA$peso) #Modelo
+summary(modelo_fao)
+
+
+modelo_fao$reliab #Fiabilidad del modelo
+
+
+#parámetro severidad items (parámetro b, irt)
+tabla_items <- data.frame(
+  Item = names(modelo_fao$b),
+  Severidad_b = modelo_fao$b,
+  Error_Std = modelo_fao$se.b
+)
+
+print(tabla_items)
+
+# Extraer infit y outfit de los ítems (Ajuste adecuado entre 0.7 y 1.3)
+tabla_ajuste <- data.frame(
+  Item = names(modelo_fao$infit),
+  Infit = modelo_fao$infit,
+  Outfit = modelo_fao$outfit
+)
+
+print(tabla_ajuste)
+
+
+#Asignar punt directa y Theta a cada sujeto
+FIES_FOESSA$Punt_Directa <- rowSums(vars_FIES, na.rm = TRUE) #Puntuación directa
+FIES_FOESSA$thetaFAO <- modelo_fao$a[FIES_FOESSA$Punt_Directa+1] #Variable ThetaFAO
+
+
+
+#PUNTOS DE CORTE FAO (Basados en probabilidad)
+
+corte <- equating.fun(modelo_fao)
+corte$prevs * 100 #Porcentaje en cada rango FAO (Prevalencia País)
+corte$adj.thres
+probabilidades <- corte$probs.rs
+corte$probs.rs #Extrae las probabilidades de puntuar en rango grave y moderado de las puntuaciones directas
+              #Con esta tabla se construye la calculadora.
+
+#Se asigna un rango a cada persona basado en la probabilidad de pertenecer a él
+#Es una aproximación, la prevalencia real de españa se calcula con el Corte (función equating)
+#Tiene un interés internacional, pero no es muy práctico para estudiar intraEspaña
+
+
+punt <- FIES_FOESSA$Punt_Directa
+FIES_FOESSA$prob_mod_sev <- probabilidades[
+  as.character(punt), "FI_mod+"
+]
+
+FIES_FOESSA$prob_grave <- probabilidades[
+  as.character(punt), "FI_sev"
+]
+
+
+FIES_FOESSA$Rango_FAO_Prob <- factor(
+  ifelse(
+    is.na(punt),
+    NA_character_,
+    ifelse(
+      punt == 0,
+      "1. Seguridad alimentaria",
+      ifelse(
+        FIES_FOESSA$prob_grave >= 0.5,
+        "4. Grave inseguridad alimentaria",
+        ifelse(
+          FIES_FOESSA$prob_mod_sev >= 0.5,
+          "3. Moderada inseguridad alimentaria",
+          "2. Leve inseguridad alimentaria"
+        )
+      )
+    )
+  ),
+  levels = c(
+    "1. Seguridad alimentaria",
+    "2. Leve inseguridad alimentaria",
+    "3. Moderada inseguridad alimentaria",
+    "4. Grave inseguridad alimentaria"
+  )
+)
+
+#Resultados
+
+table(FIES_FOESSA$Rango_FAO, useNA = "ifany") 
+
+round(
+  prop.table(table(FIES_FOESSA$Rango_FAO)) * 100,
+  2
+)
+
+
+#-------------------------------------
+#Hay una limitación del modelo Rasch, que es que no tiene en cuenta la severidad 
+#diferencial entre ítems. De tal modo, que un modelo IRT de 3 parámetros 
+#permitirá alcanzar puntuaciones ponderadas y un abanico más amplio de resultados (numéricos)
+
+
+
+#===============================
+#TRI (Modelo de Rasch y Modelo 2pl - Mejor ajuste en 2pl -)
+#===============================
+
+#-------------------------------
+#Normalizar PESO, ponderación
+#-------------------------------
+
+
+
+FIES_FOESSA$peso_norm <- FIES_FOESSA$peso * (nrow(vars_FIES) / sum(FIES_FOESSA$peso))
+
+
+#-------------------------------
+#Análisis TRI NACIONAL (Rasch Model (mirt) y 2pl)
+#-------------------------------
+
+modelo_rasch <- mirt(vars_FIES, 1, itemtype = "Rasch", survey.weights = FIES_FOESSA$peso_norm)
+modelo_2pl <- mirt(vars_FIES, 1, itemtype = "2PL", survey.weights = FIES_FOESSA$peso_norm)
+
+
+
+
+coef(modelo_rasch, IRTpars = TRUE, simplify = TRUE)
+coef(modelo_2pl, IRTpars = TRUE, simplify = TRUE)
+
+
+#Ajuste modelos
+anova(modelo_rasch, modelo_2pl)
+
+
+M2(modelo_rasch, type = "C2") #El ajuste tipo C2 es corregido para muestras altas
+M2(modelo_2pl, type = "C2")
+
+
+itemfit(modelo_rasch)
+itemfit(modelo_2pl) 
+apply(vars_FIES, 2, table)
+
+plot(modelo_2pl, type = "trace")
+
+patrones_BBDD <- as.data.frame(table(
+  apply(vars_FIES, 1, paste0, collapse = "")
+))
+
+patrones_BBDD <- patrones_BBDD[order(-patrones_BBDD$Freq), ]
+
+head(patrones_BBDD, 20)
+str(patrones_BBDD)
+
+
+theta <- fscores(modelo_2pl, method = "EAP")
+theta <- as.numeric(theta)
+
+summary(theta)
+str(theta)
+
+#Añadir los valores Theta como columna en el DF
+
+FIES_FOESSA$theta2pl <- theta
+
+write_xlsx(FIES_FOESSA, "FIES_Punt_ThetaTRI.xlsx")
+
+
+#####ESTE CÓDIGO NO FUNCIONA - REVISAR (Pat) está más adelante, problema de orden######
+theta_pat <- fscores(
+  modelo_2pl,
+  response.pattern = as.matrix(pat),
+  method = "EAP"
+)[, "F1"]
+
+length(theta_pat)
+
+
+#---------------------
+##Cálculo de Fiabilidad marginal para determinar entre qué puntuaciones es especialmente preciso el test
+#---------------------
+#Según IRT, el test es especialmetne fiable para discriminar puntuaciones altas, pero no es bueno
+#para la detección de casos moderados. La estructura del test es adecuada (fiabilidad TCT alta), 
+#Sin embargo, invita a combinar esta medida con otras que tengan una capacidad de detectar factores más
+#moderados del fenómeno (incluir como recomendaciones esta parte). 
+
+#Fiabilidad marginal 2pl
+marginal_rxx(modelo_2pl)
+
+plot(modelo_2pl, type = "info")
+
+#Fiabilidad empírica de theta 2pl
+theta_se <- fscores(
+  modelo_2pl,
+  full.scores.SE = TRUE
+)
+
+empirical_rxx(theta_se)
+
+
+#grid de puntuaciones theta (detectar dónde discrimina la escala)
+theta_grid <- seq(-2, 4, by = 0.5)
+
+info <- testinfo(modelo_2pl, Theta = matrix(theta_grid))
+
+resultado_info <- data.frame(
+  theta = theta_grid,
+  informacion = as.numeric(info),
+  SE = 1 / sqrt(as.numeric(info))
+)
+
+resultado_info
+
+
+#-------------------------------
+#MODELO MOKKEN PARA CONSTRUIR UN ORDEN JERÁRQUICO NO PARAMÉTRICO
+# Atención, porque el orden jerárquico no coincide con el orden de la escala
+#¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿ NO INCLUIR EN EL ANÁLISIS
+#-------------------------------
+
+
+#Resultado MOKKA y supuestos
+
+H <- coefH(vars_FIES)
+
+resultado_mon <- check.monotonicity(vars_FIES)
+resultado_mon
+
+IIO <- check.iio(vars_FIES)
+IIO
+
+
+#Comprobaciones MOKKA no relevantes
+colMeans(vars_FIES, na.rm = TRUE)
+prop.table(table(rowSums(vars_FIES)))
+sort(colMeans(vars_FIES, na.rm = TRUE), decreasing = TRUE)
+score_total <- rowSums(vars_FIES, na.rm = TRUE)
+score_total
+tabla_gravedad <- do.call(
+  rbind,
+  lapply(0:8, function(s) {
+    colMeans(vars_FIES[score_total == s, , drop = FALSE], na.rm = TRUE)
+  })
+)
+
+rownames(tabla_gravedad) <- 0:8
+
+round(tabla_gravedad, 3)
+round(tabla_gravedad, 3)
+
+
+
+
+
+##Construcción de la puntuación Mokka + TRI 2pl
+
+# ============================================================
+# COMPARACIÓN DE SISTEMAS DE PUNTUACIÓN
+# ============================================================
+
+#Las puntuaciones posibles tienen en cuenta lo siguiente:
+#- El orden jerárquico tanto del Mokka como de la TRI
+#- El valor b que establece gravedad. Se estudia la distancia de b entre 
+#-- items, y se observa que it 1,2,3 tienen distancia similar, y dif a 
+#-- 4,5, y diferente a it6,7,8. Se propone, por tanto, un sistema ponderado
+#-- preferente que sea 1,1,1;2,2;3;3;3 (w_severidad): tiene un sentido ordinal:
+#-- 1 = baja gravedad o severidad; 2 = media; 3 = alta.
+#-- Se compara con el sumatorio simple 1,1,1,1,1,1,1,1 (w_simple)
+#-- Se compara con el sumatorio ordinal ponderado basado en la jerarquía mokka:
+#--- 1,2,3,4,5,6,7,8 (w_ordinal)
+#--Para las comparaciones se establece una correlación con el theta de cada sujeto, 
+#--- el valor theta del modelo 2pl tiene en cuenta los parámetros a y b.
+#Al final se propone un cuarto método que es Patrón
+
+
+
+
+##Cálculo de las distancias de B en modelo 2pl TRI
+
+
+b <- c(
+  E84_3R = 0.933,
+  E84_2R = 1.043,
+  E84_1R = 1.101,
+  E84_5R = 1.415,
+  E84_4R = 1.601,
+  E84_7R = 1.805,
+  E84_6R = 1.952,
+  E84_8R = 2.112
+)
+
+data.frame(
+  item = names(b),
+  b = b,
+  distancia = c(NA, diff(b))
+)
+
+
+#-------------------------------
+# Pesos (formas de corrección - ponderación)
+#-------------------------------
+
+w_simple <- rep(1, 8)
+
+w_ordinal <- 1:8
+
+w_3niveles <- c(1, 1, 1, 2, 2, 3, 3, 3)
+
+names(w_ordinal) <- names(vars_FIES)
+
+# Índices
+score_simple <- rowSums(vars_FIES)
+
+score_ordinal <- as.numeric(
+  as.matrix(vars_FIES) %*% w_ordinal
+)
+
+score_3niveles <- as.numeric(
+  as.matrix(vars_FIES) %*% w_3niveles
+)
+
+
+#-------------------------------
+#PATRÓN: Crear plantilla corrección patrones TRI estandarizado 0-100
+#-------------------------------
+
+# 256 patrones posibles
+pat <- expand.grid(rep(list(0:1), 8))
+names(pat) <- names(vars_FIES)
+
+# Código del patrón
+patron <- apply(pat, 1, paste0, collapse = "")
+
+# Frecuencias observadas
+obs <- table(apply(vars_FIES, 1, paste0, collapse = ""))
+
+# Frecuencia de cada uno de los 256 patrones
+frecuencia <- as.numeric(obs[patron])
+frecuencia[is.na(frecuencia)] <- 0
+
+# Theta de cada patrón
+theta_pat <- as.numeric(
+  fscores(
+    modelo_2pl,
+    response.pattern = as.matrix(pat),
+    method = "EAP"
+  )
+)
+
+# Tabla final
+tabla_patrones <- data.frame(
+  patron = patron,
+  frecuencia = frecuencia,
+  n_positivos = rowSums(pat),
+  theta = theta_pat
+)
+
+tabla_patrones <- tabla_patrones[order(tabla_patrones$theta), ]
+rownames(tabla_patrones) <- NULL
+
+# Ordenar por theta
+tabla_patrones <- tabla_patrones[order(tabla_patrones$theta), ]
+rownames(tabla_patrones) <- NULL
+
+#Estandarización 0 a 100 (min-max)
+
+theta_min <- min(tabla_patrones$theta)
+theta_max <- max(tabla_patrones$theta)
+
+tabla_patrones$indice_0_100 <- round(
+  100 * (tabla_patrones$theta - theta_min) /
+    (theta_max - theta_min)
+)
+
+tabla_patrones
+
+
+write_xlsx(tabla_patrones, "tabla_patrones.xlsx")
+
+
+
+
+# Añadir la puntuación 0-100 y el patrón de respuesta a FIES_FOESSA
+
+items_FIES <- c(
+  "E84_1R", "E84_2R", "E84_3R", "E84_4R",
+  "E84_5R", "E84_6R", "E84_7R", "E84_8R"
+)
+
+patron_individual <- apply(
+  FIES_FOESSA[, items_FIES],
+  1,
+  paste0,
+  collapse = ""
+)
+
+FIES_FOESSA$indice_0_100 <- tabla_patrones$indice_0_100[
+  match(patron_individual, tabla_patrones$patron)
+]
+
+head(FIES_FOESSA[, c(items_FIES, "FIES_FOESSA")])
+
+sum(is.na(FIES_FOESSA$indice_0_100))
+summary(FIES_FOESSA$indice_0_100)
+
+write_xlsx(FIES_FOESSA,"BBDD_indice patron.xlsx")
+
+
+
+
+# ------------------------------------------------------------
+# 1. Correlaciones con theta de cada método de corrección
+# ------------------------------------------------------------
+
+round(c(
+  theta = cor(theta, score_3niveles, method = "spearman"),
+  simple = cor(score_simple, theta, method = "spearman"),
+  ordinal = cor(score_ordinal, theta, method = "spearman"),
+  patron = cor(FIES_FOESSA$indice_0_100, theta, method="spearman")
+), 6)
+
+
+
+# ------------------------------------------------------------
+# 2. Correlación entre los cuatro índices
+# ------------------------------------------------------------
+
+cor_indices <- cor(
+  cbind(
+    Simple = score_simple,
+    Ordinal = score_ordinal,
+    TresNiveles = score_3niveles,
+    Patron= FIES_FOESSA$indice_0_100 
+  ),
+  method = "spearman"
+)
+
+round(cor_indices, 6)
+
+
+# ------------------------------------------------------------
+# 3. Distribución de los índices
+# ------------------------------------------------------------
+
+summary(score_simple)
+summary(score_ordinal)
+summary(score_3niveles)
+
+
+
+# ------------------------------------------------------------
+# 4. Número de valores posibles
+# ------------------------------------------------------------
+
+length(unique(score_simple))
+length(unique(score_ordinal))
+length(unique(score_3niveles))
+length(unique(FIES_FOESSA$indice_0_100))
+
+
+
+# ------------------------------------------------------------
+# 5. ¿Cuánto varía el índice ponderado dentro de cada
+#    puntuación simple? -No muy útil-
+# ------------------------------------------------------------
+
+#Comparación Ordinal vs Simple
+comparacionOrd <- aggregate(
+  score_ordinal ~ score_simple,
+  FUN = function(x) c(
+    min = min(x),
+    media = mean(x),
+    max = max(x),
+    sd = sd(x)
+  )
+)
+
+comparacionOrd
+
+#Comparación 3 niveles vs Simple
+
+comparacion3niveles <- aggregate(
+  score_3niveles ~ score_simple,
+  FUN = function(x) c(
+    min = min(x),
+    media = mean(x),
+    max = max(x),
+    sd = sd(x)
+  )
+)
+
+comparacion3niveles
+
+
+#Comparación 3 niveles vs ordinal
+
+comparacionPond <- aggregate(
+  score_3niveles ~ score_ordinal,
+  FUN = function(x) c(
+    min = min(x),
+    media = mean(x),
+    max = max(x),
+    sd = sd(x)
+  )
+)
+
+comparacionPond
+
+
+
+#Comparación 3 niveles vs patron
+
+comparacionPatron <- aggregate(
+  score_3niveles ~ FIES_FOESSA$indice_0_100,
+  FUN = function(x) c(
+    min = min(x),
+    media = mean(x),
+    max = max(x),
+    sd = sd(x)
+  )
+)
+
+comparacionPatron
+
+
+
