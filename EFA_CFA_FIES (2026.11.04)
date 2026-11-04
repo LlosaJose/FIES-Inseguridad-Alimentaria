@@ -1,0 +1,197 @@
+#Paquetes
+
+install.packages("foreign")
+install.packages("ltm")
+install.packages("mirt")
+install.packages("mokken")
+install.packages("psych")
+install.packages("RM.weights")
+
+library(mirt)
+library(foreign)
+library(psych)
+library(GPArotation)
+library(writexl)
+library(mokken)
+library(ltm)
+library(psych)
+library(lavaan)
+library(semPlot)
+library(dplyr)
+library(RM.weights)
+
+#================
+##Abrir data frame 
+#================
+setwd('C:\\Users\\llosa\\Facultad Padre Ossó\\Grupo Investigacion Educacion Social - Documentos\\2026 Inseguridad alimentaria\\0.Bases de datos\\BD 2024 FOESSA - Análisis Jose\\')
+BBDD_Foessa<-read.spss("2024_BBDD_FOESSA.sav", to.data.frame=TRUE)
+
+
+
+#Base total
+
+FIES_FOESSA <- read.csv("FIES_FOESSA.csv", header = TRUE)
+
+head(FIES_FOESSA)
+str(FIES_FOESSA)
+summary(FIES_FOESSA)
+
+
+#Submuestras EFA - CFA
+
+BBDD_EFA <- read.csv("EFA.csv", header = TRUE, sep = ";")
+head(BBDD_EFA)
+str(BBDD_EFA)
+summary(BBDD_EFA)
+
+
+BBDD_CFA <- read.csv("CFA.csv", header = TRUE, sep = ";")
+head(BBDD_EFA)
+str(BBDD_EFA)
+summary(BBDD_EFA)
+
+
+#Cambiar escala a las vars FIES (en el ejemplo se convierten a numéricas)
+
+cols<-c("E84_1R", "E84_2R", "E84_3R", "E84_4R", "E84_5R", 
+        "E84_6R", "E84_7R", "E84_8R")
+BBDD_CFA[cols] <- lapply(BBDD_CFA[cols], as.ordered)
+BBDD_CFA$A2 <- as.factor(BBDD_CFA$A2)
+sapply(BBDD_CFA, class)
+
+BBDD_EFA[cols] <- lapply(BBDD_EFA[cols], as.numeric)
+sapply(BBDD_EFA, class)
+
+FIES_FOESSA[cols] <- lapply(FIES_FOESSA[cols], as.numeric)
+sapply(FIES_FOESSA, class)
+
+
+
+#Base sólo con las variables del FIES
+vars_FIES <- FIES_FOESSA[, c("E84_1R", "E84_2R", "E84_3R", "E84_4R", "E84_5R",
+                             "E84_6R", "E84_7R", "E84_8R")]
+
+
+sapply(vars_FIES, class)
+head(vars_FIES)
+summary(vars_FIES)
+
+
+
+#===============================
+#1.Validez estructura EFA - CFA
+#===============================
+
+###EFA Validación
+
+# Correlaciones tetracóricas
+Matriz_Validacion <- tetrachoric(BBDD_EFA)$rho
+
+KMO(Matriz_Validacion)
+
+cortest.bartlett(
+  Matriz_Validacion,
+  n = nrow(BBDD_EFA )
+)
+
+
+# EFA 1 factor y prueba var explicada
+efa_Validacion <- fa(BBDD_EFA ,
+                     nfactors = 1,
+                     n.obs = nrow(BBDD_EFA ),
+                     fm = "minres",
+                     rotate = "oblimin",
+                     cor = "tetrachoric",
+                     scores = "regression")
+
+# Resultados
+print(efa_Validacion$loadings, cutoff = .30)
+efa_Validacion$communality
+
+
+###CFA Valdación
+
+#Especificación del modelo conceptual (unidimensional)
+Onefactor<-'FIES =~ E84_1R + E84_2R + E84_3R + E84_4R + E84_5R + 
+  E84_6R + E84_7R + E84_8R'
+
+
+
+#realización del AFC para la primera estructura
+CFAone <- cfa(Onefactor, data=BBDD_CFA, estimator="DWLS", ordered=names(BBDD_CFA))
+summary(CFAone, fit.measures=TRUE)
+
+fitMeasures(CFAone)
+semPaths(CFAone, intercepts = FALSE,edge.label.cex=1.5, optimizeLatRes = TRUE, groups = "lat",pastel = TRUE, exoVar = FALSE, sizeInt=5,edge.color ="black",esize = 6, label.prop=2,sizeLat = 6,"std", layout="circle2")
+
+#Consistencia interna Kuder-Richardson (KR20) https://methods.sagepub.com/ency/edvol/the-sage-encyclopedia-of-communication-research-methods/chpt/reliability-kuderrichardson-formula#_
+#Se calcula el alpha, ya que matemáticame es el mismo cálculo.
+#Calcular el coeficiente y resultado (raw alpha y "if item dropped")
+
+
+
+fiabilidad <- alpha(vars_FIES)
+
+print(fiabilidad)
+
+
+#-----------------------
+#Invarianza género
+#-----------------------
+
+# Baseline
+
+base.line <- cfa(Onefactor, data = BBDD_CFA, estimator = "DWLS", orthogonal=FALSE)
+
+
+# configural invariance
+
+inv.conf <- cfa(Onefactor, data = BBDD_CFA, group = "A2", estimator = "DWLS")
+
+# Metric invariance
+
+inv.metric <- cfa(Onefactor, data = BBDD_CFA, group = "A2", estimator = "DWLS", group.equal = "loadings")
+
+# Scalar invariance
+inv.scalar <- cfa(Onefactor, data = BBDD_CFA, group = "A2",
+                  group.equal = c("thresholds", "loadings"), estimator = "DWLS")
+
+
+# strict invariance
+inv.strict <- cfa(Onefactor, data = BBDD_CFA, group = "A2",
+                  group.equal = c("thresholds", "loadings", "residuals"), estimator = "DWLS")
+
+
+
+# model comparison tests
+fitMeasures(base.line)
+fitMeasures(inv.conf)
+fitMeasures(inv.metric)
+fitMeasures(inv.scalar)
+fitMeasures(inv.strict)
+
+
+fit.stats <- rbind(fitmeasures(base.line, fit.measures = c("chisq", "df", "rmsea","srmr", "tli", "cfi", "aic")),
+                   fitmeasures(inv.conf, fit.measures = c("chisq", "df", "rmsea","srmr", "tli", "cfi", "aic")),
+                   fitmeasures(inv.metric, fit.measures = c("chisq", "df", "rmsea","srmr", "tli", "cfi", "aic")),
+                   fitmeasures(inv.scalar, fit.measures = c("chisq", "df", "rmsea","srmr", "tli", "cfi", "aic")),
+                   fitmeasures(inv.strict, fit.measures = c("chisq", "df", "rmsea","srmr", "tli", "cfi", "aic")))
+
+rownames(fit.stats) <- c("baseline", "configural", "metric","scalar", "strict")
+fit.stats
+
+
+#Guardar los ajustes de los modelos de invarianza como un Excel
+
+fit.stats.excel <- data.frame(
+  Modelo = rownames(fit.stats),
+  fit.stats,
+  row.names = NULL
+)
+
+write_xlsx(as.data.frame(fit.stats.excel), "invarianza.xlsx")
+
+
+
+
+
