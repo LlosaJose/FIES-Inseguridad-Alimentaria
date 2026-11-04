@@ -1,0 +1,876 @@
+#Paquetes
+
+install.packages("foreign")
+install.packages("ltm")
+install.packages("mirt")
+install.packages("mokken")
+install.packages("psych")
+install.packages("RM.weights")
+
+library(mirt)
+library(foreign)
+library(psych)
+library(GPArotation)
+library(writexl)
+library(mokken)
+library(ltm)
+library(psych)
+library(lavaan)
+library(semPlot)
+library(dplyr)
+library(RM.weights)
+
+
+#================
+##Abrir data frame TRI 
+#================
+setwd('C:\\Users\\llosa\\Facultad Padre Ossó\\Grupo Investigacion Educacion Social - Documentos\\2026 Inseguridad alimentaria\\0.Bases de datos\\BD 2024 FOESSA - Análisis Jose\\00.Análisis hogares FIES\\')
+BBDD_Foessa<-read.spss("2024_BBDD_FOESSA_NA.sav", to.data.frame=TRUE)
+
+
+FIES_FOESSA <- BBDD_Foessa %>% 
+  select("numero", "peso", "NUCU", "SELEC_HOGAR", "peso_tamano", "E84_1R", "E84_2R", "E84_3R", "E84_4R", "E84_5R", 
+         "E84_6R", "E84_7R", "E84_8R")
+
+str(FIES_FOESSA)
+
+vars_FIES <- FIES_FOESSA %>%
+  select("E84_1R", "E84_2R", "E84_3R", "E84_4R", "E84_5R", 
+         "E84_6R", "E84_7R", "E84_8R")
+
+
+FIES_FOESSA_Hogares <- FIES_FOESSA %>% 
+  filter(SELEC_HOGAR == 1)
+
+str(FIES_FOESSA_Hogares)
+
+vars_FIES_Hogares <- FIES_FOESSA_Hogares %>%
+  select("E84_1R", "E84_2R", "E84_3R", "E84_4R", "E84_5R", 
+         "E84_6R", "E84_7R", "E84_8R")
+
+
+
+#====================
+#1.AJUSTE MODELOS IRT: FAO Y 2PL (BASE HOGARES)
+#====================
+
+#-------------------------------
+#1.1.RASCH FAO HOGARES (RM.W)
+#-------------------------------
+modelo_fao <- RM.w(.data = vars_FIES_Hogares, .w = FIES_FOESSA_Hogares$peso) #Modelo
+summary(modelo_fao)
+
+
+modelo_fao$reliab #Fiabilidad del modelo
+modelo_fao$b #Parámetro b local
+
+
+# Extraer infit y outfit de los ítems (Ajuste adecuado entre 0.7 y 1.3)
+tabla_ajuste <- data.frame(
+  Item = names(modelo_fao$infit),
+  Infit = modelo_fao$infit,
+  Outfit = modelo_fao$outfit
+)
+
+print(tabla_ajuste)
+
+
+
+#-------------------------------
+#1.2.ESTIMACIÓN MODELO 2PL (No buen ajuste)
+#-------------------------------
+
+#Normalizar PESO, ponderación
+
+
+FIES_FOESSA_Hogares$peso <- BBDD_Foessa$peso[
+  match(FIES_FOESSA_Hogares$numero, BBDD_Foessa$numero)
+] #Añade la variable peso
+
+#Añade la variable peso normalizada
+FIES_FOESSA_Hogares$peso_norm <- FIES_FOESSA_Hogares$peso * (nrow(vars_FIES_Hogares) / sum(FIES_FOESSA_Hogares$peso))
+
+head(FIES_FOESSA_Hogares$peso)
+str(FIES_FOESSA_Hogares$peso)
+
+head(FIES_FOESSA_Hogares$peso_norm)
+str(FIES_FOESSA_Hogares$peso_norm)
+
+
+#ESTIMACIÓN MODELO
+
+vars_FIES_Hogares_NA <- vars_FIES_Hogares |>
+  filter(!if_all(
+    c(E84_1R, E84_2R, E84_3R, E84_4R, E84_5R, E84_6R, E84_7R, E84_8R)
+    , is.na)) #eliminar casos con todos los datos FIES perdidos
+
+FIES_FOESSA_Hogares_NA <- FIES_FOESSA_Hogares |>
+  filter(!if_all(
+    c(E84_1R, E84_2R, E84_3R, E84_4R, E84_5R, E84_6R, E84_7R, E84_8R)
+    , is.na)) #eliminar casos con todos los datos FIES perdidos
+
+modelo_2pl <- mirt(vars_FIES_Hogares_NA, 1, itemtype = "2PL", survey.weights = FIES_FOESSA_Hogares_NA$peso_norm)
+
+
+coef(modelo_2pl, IRTpars = TRUE, simplify = TRUE)
+
+
+
+#Ajuste modelo
+itemfit(modelo_2pl, fit_stats = "infit", na.rm=TRUE) 
+itemfit(modelo_2pl, na.rm=TRUE) 
+M2(modelo_2pl, type = "C2") #El ajuste tipo C2 es corregido para muestras altas
+
+apply(vars_FIES_Hogares, 2, table)
+
+plot(modelo_2pl, type = "trace")
+
+
+#Calculo de thetas
+theta2pl <- fscores(modelo_2pl, method = "EAP")[, "F1"]
+theta2pl <- as.numeric(theta2pl)
+
+summary(theta2pl)
+str(theta2pl)
+
+
+
+
+#=================================================
+#2.CALCULOS UMBRALES Y PREVALENCIAS RASCH FAO FIES
+#=================================================
+
+#Determinado que RASCH FAO ofrece mejor ajuste se extraen puntuaciones
+
+
+
+Est_FAO <- equating.fun(modelo_fao) #Estimación EQUATING Base (FAO)
+
+#-------------
+#2.1.a.Equating original: conserva el estándar FAO
+#-------------
+
+
+# 1. Extraer los umbrales ajustados (por ejemplo, moderada y grave)
+Umbral_FAO <- Est_FAO$adj.thres
+
+Umbral_FAO
+
+# 2. Calcular la asignación probabilística con el modelo y los umbrales
+prevalencias_fao <- prob.assign(modelo_fao, sthres = Umbral_FAO)
+
+# 3. Ver las prevalencias acumuladas en porcentaje (multiplicadas por 100)
+porcentajes_prevalencia <- prevalencias_fao$sprob * 100
+print(porcentajes_prevalencia)
+
+# Prevalencias
+# Matriz de probabilidades acumuladas por puntuación directa
+prob_acum_FAO <- Est_FAO$probs.rs
+# Asignar nombres explícitos a las tres columnas
+colnames(prob_acum_FAO) <- c(
+  "P_moderada_mas",
+  "P_grave"
+)
+
+# Tabla de consulta de la calculadora punt 1:8
+tabla_prob_FIES_FAO <- data.frame(
+  Punt_Directa = 0:8,
+  P_moderada_mas = prob_acum_FAO[, 1],
+  P_grave = prob_acum_FAO[, 2]
+)
+
+
+
+# Probabilidades de las cuatro categorías exclusivas
+tabla_prob_FIES_FAO$P_seguridad <-
+  1 - tabla_prob_FIES_FAO$P_moderada_mas
+
+tabla_prob_FIES_FAO$P_moderada <-
+  tabla_prob_FIES_FAO$P_moderada_mas -
+  tabla_prob_FIES_FAO$P_grave
+
+# P_grave ya es la probabilidad de la categoría grave
+
+# Mostrar en porcentajes
+cols_prob_FAO <- grep("^P_", names(tabla_prob_FIES_FAO))
+
+tabla_prob_FIES_FAO[cols_prob_FAO] <-
+  lapply(tabla_prob_FIES_FAO[cols_prob_FAO], function(x) round(100*x, 2))
+
+print(tabla_prob_FIES_FAO)
+
+
+
+rowSums(tabla_prob_FIES_FAO[
+  , c("P_seguridad", "P_moderada", "P_grave")
+])
+
+prev_acum_FAO <- as.numeric(Est_FAO$prevs)
+
+# Prevalencias de las categorías exclusivas
+prev_FIES_FAO <- c(
+  Seguridad = 1 - prev_acum_FAO[1],
+  Moderada = prev_acum_FAO[1] - prev_acum_FAO[2],
+  Grave = prev_acum_FAO[2]
+)
+
+# Porcentajes
+round(prev_FIES_FAO * 100, 2)
+sum(prev_FIES_FAO * 100)
+
+
+
+
+#--------------
+#2.1.b.Equating BCN
+#--------------
+
+# Tres umbrales de referencia: ítems 2, 5 y 8
+
+Est_FAO$standard
+umbrales_BCN <- Est_FAO$standard[c(2, 5, 8)]
+
+
+# Equating con los tres umbrales
+Est_BCN <- equating.fun(
+  modelo_fao,
+  thres = umbrales_BCN
+)
+
+# Umbrales transformados a la métrica española
+Est_BCN$adj.thres
+
+# Prevalencias
+# Matriz de probabilidades acumuladas por puntuación directa
+prob_acum_BCN <- Est_BCN$probs.rs
+
+# Asignar nombres explícitos a las tres columnas
+colnames(prob_acum_BCN) <- c(
+  "P_leve_mas",
+  "P_moderada_mas",
+  "P_grave"
+)
+
+# Tabla de consulta de la calculadora
+tabla_prob_FIES_BCN <- data.frame(
+  Punt_Directa = 0:8,
+  P_leve_mas = prob_acum_BCN[, 1],
+  P_moderada_mas = prob_acum_BCN[, 2],
+  P_grave = prob_acum_BCN[, 3]
+)
+
+# Probabilidades de las cuatro categorías exclusivas
+tabla_prob_FIES_BCN$P_seguridad <-
+  1 - tabla_prob_FIES_BCN$P_leve_mas
+
+tabla_prob_FIES_BCN$P_leve <-
+  tabla_prob_FIES_BCN$P_leve_mas -
+  tabla_prob_FIES_BCN$P_moderada_mas
+
+tabla_prob_FIES_BCN$P_moderada <-
+  tabla_prob_FIES_BCN$P_moderada_mas -
+  tabla_prob_FIES_BCN$P_grave
+
+# P_grave ya es la probabilidad de la categoría grave
+
+# Mostrar en porcentajes
+cols_prob_BCN <- grep("^P_", names(tabla_prob_FIES_BCN))
+
+tabla_prob_FIES_BCN[cols_prob_BCN] <-
+  lapply(tabla_prob_FIES_BCN[cols_prob_BCN], function(x) round(100*x, 2))
+
+print(tabla_prob_FIES_BCN)
+
+
+
+rowSums(tabla_prob_FIES_BCN[
+  , c("P_seguridad", "P_leve", "P_moderada", "P_grave")
+])
+
+prev_acum_BCN <- as.numeric(Est_BCN$prevs)
+
+# Prevalencias de las categorías exclusivas
+prev_FIES_BCN <- c(
+  Seguridad = 1 - prev_acum_BCN[1],
+  Leve = prev_acum_BCN[1] - prev_acum_BCN[2],
+  Moderada = prev_acum_BCN[2] - prev_acum_BCN[3],
+  Grave = prev_acum_BCN[3]
+)
+
+# Porcentajes
+round(prev_FIES_BCN * 100, 2)
+sum(prev_FIES_BCN * 100)
+
+
+
+#--------------
+#2.1.c.Equating TEMPRANA (Oviedo)
+#--------------
+
+# Tres umbrales de referencia: ítems 1 (temprana), 5 y 8
+Est_FAO$standard
+umbrales_OVI <- Est_FAO$standard[c(1, 5, 8)]
+
+
+# Equating con los tres umbrales
+Est_OVI <- equating.fun(
+  modelo_fao,
+  thres = umbrales_OVI
+)
+
+# Umbrales transformados a la métrica española
+Est_OVI$adj.thres
+
+# Prevalencias
+# Matriz de probabilidades acumuladas por puntuación directa
+prob_acum_OVI <- Est_OVI$probs.rs
+
+# Asignar nombres explícitos a las tres columnas
+colnames(prob_acum_OVI) <- c(
+  "P_temprana_mas",
+  "P_moderada_mas",
+  "P_grave"
+)
+
+# Tabla de consulta de la calculadora
+tabla_prob_FIES_OVI <- data.frame(
+  Punt_Directa = 0:8,
+  P_temprana_mas = prob_acum_OVI[, 1],
+  P_moderada_mas = prob_acum_OVI[, 2],
+  P_grave = prob_acum_OVI[, 3]
+)
+
+# Probabilidades de las cuatro categorías exclusivas
+tabla_prob_FIES_OVI$P_seguridad <-
+  1 - tabla_prob_FIES_OVI$P_temprana_mas
+
+tabla_prob_FIES_OVI$P_temprana <-
+  tabla_prob_FIES_OVI$P_temprana_mas -
+  tabla_prob_FIES_OVI$P_moderada_mas
+
+tabla_prob_FIES_OVI$P_moderada <-
+  tabla_prob_FIES_OVI$P_moderada_mas -
+  tabla_prob_FIES_OVI$P_grave
+
+# P_grave ya es la probabilidad de la categoría grave
+
+# Mostrar en porcentajes
+cols_prob_OVI <- grep("^P_", names(tabla_prob_FIES_OVI))
+
+tabla_prob_FIES_OVI[cols_prob_OVI] <-
+  lapply(tabla_prob_FIES_OVI[cols_prob_OVI], function(x) round(100*x, 2))
+
+print(tabla_prob_FIES_OVI)
+
+
+
+rowSums(tabla_prob_FIES_OVI[
+  , c("P_seguridad", "P_temprana", "P_moderada", "P_grave")
+])
+
+prev_acum_OVI <- as.numeric(Est_OVI$prevs)
+
+# Prevalencias de las categorías exclusivas
+prev_FIES_OVI <- c(
+  Seguridad = 1 - prev_acum_OVI[1],
+  Temprana = prev_acum_OVI[1] - prev_acum_OVI[2],
+  Moderada = prev_acum_OVI[2] - prev_acum_OVI[3],
+  Grave = prev_acum_OVI[3]
+)
+
+# Porcentajes
+round(prev_FIES_OVI * 100, 2)
+sum(prev_FIES_OVI * 100)
+
+
+
+
+
+
+
+
+#=========================================================
+#2.2.ASIGNAR PUNTUACIONES FAO A INDIVIDUOS (BASE FIES_FOESSA)
+#=========================================================
+
+
+
+items_FIES <- paste0("E84_", 1:8, "R") #Se definen los items de la FIES
+
+#---------------------------------------------------------
+# 2.2.a PUNTUACIONES Método RANGO FAO
+#---------------------------------------------------------
+
+
+#Recuperar las probabilidades
+
+prob_acum_FAO <- Est_FAO$probs.rs
+
+colnames(prob_acum_FAO) <- c(
+  "P_moderada_mas_FAO",
+  "P_grave_FAO"
+)
+
+#Tabla asignaciones de rangos
+
+tabla_asignacion_FAO <- data.frame(
+  Punt_Directa = 0:8,
+  P_moderada_mas_FAO = prob_acum_FAO[, 1],
+  P_grave_FAO = prob_acum_FAO[, 2],
+  theta = as.numeric(modelo_fao$a)
+) %>%
+  mutate(
+    # Probabilidades de categorías exclusivas
+    P_seguridad_FAO = 1 - P_moderada_mas_FAO,
+    P_moderada_FAO = P_moderada_mas_FAO - P_grave_FAO,
+    
+    # Probabilidades expresadas en porcentaje
+    P_moderada_mas_pct_FAO = 100 * P_moderada_mas_FAO,
+    P_grave_pct_FAO = 100 * P_grave_FAO,
+    P_moderada_pct_FAO = 100 * P_moderada_FAO
+  )
+
+
+print(tabla_asignacion_FAO)
+
+
+# Asignar puntuaciones y rangos a la BBDD Hogares
+
+FIES_hogares_resultados <- FIES_FOESSA_Hogares %>%
+  mutate(
+    Punt_Directa = rowSums(
+      across(all_of(items_FIES)),
+      na.rm = FALSE
+    )
+  ) %>%
+  left_join(
+    tabla_asignacion_FAO,
+    by = "Punt_Directa"
+  ) %>%
+  mutate(
+    # Clasificación según los umbrales theta de FAO
+    Rango_FAO = case_when(
+      is.na(theta) ~ NA_character_,
+      theta >= unname(Umbral_FAO["FI_sev"]) ~ "Grave",
+      theta >= unname(Umbral_FAO["FI_mod+"]) ~ "Moderada",
+      TRUE ~ "Seguridad alimentaria"
+    )
+  ) %>%
+  select(
+    NUCU,
+    Punt_Directa,
+    theta,
+    P_moderada_mas_FAO,
+    P_moderada_FAO,
+    P_grave_pct_FAO,
+    P_moderada_mas_pct_FAO,
+    P_moderada_pct_FAO,
+    P_grave_pct_FAO,
+    Rango_FAO
+  )
+
+
+
+stopifnot(!anyDuplicated(FIES_hogares_resultados$NUCU))#Comprobar que cada NUCU aparece una sola vez
+
+
+#Incorporar los resultados a la base de individuos
+#Todos los miembros del mismo hogar reciben los mismos valores.
+
+FIES_FOESSA <- FIES_FOESSA %>%
+  select(
+    -any_of(c(
+      "Punt_Directa", "theta",
+      "P_moderada_mas_FAO", "P_moderada_FAO", "P_grave_FAO",
+      "P_moderada_mas_pct_FAO", "P_moderada_pct_FAO",
+      "P_grave_pct_FAO", "Rango_FAO"
+    ))
+  ) %>%
+  left_join(
+    FIES_hogares_resultados,
+    by = "NUCU"
+  )
+
+
+# VER RESULTADOS
+str(FIES_FOESSA)
+
+
+sum(is.na(FIES_FOESSA$Rango_FAO)) # Número de individuos sin correspondencia con un hogar
+
+# Comprobar que las nuevas variables se han incorporado
+FIES_FOESSA %>%
+  select(
+    NUCU, Punt_Directa, theta,
+    P_moderada_mas_pct_FAO, P_grave_pct_FAO, Rango_FAO
+  ) %>%
+  head(10)
+
+summary(FIES_FOESSA$Punt_Directa)
+summary(FIES_FOESSA$Rango_FAO)
+
+
+
+table(FIES_FOESSA$Rango_FAO)
+
+
+
+
+#---------------------------------------------------------
+# 2.2.b. PUNTUACIONES Método RANGO BCN
+#---------------------------------------------------------
+
+
+
+items_FIES <- paste0("E84_", 1:8, "R")
+
+#Recuperar las probabilidades
+prob_acum_BCN <- Est_BCN$probs.rs
+
+colnames(prob_acum_BCN) <- c(
+  "P_leve_mas_BCN",
+  "P_moderada_mas_BCN",
+  "P_grave_BCN"
+)
+
+#Tabla asignaciones de rangos
+tabla_asignacion_BCN <- data.frame(
+  Punt_Directa = 0:8,
+  P_leve_mas_BCN = prob_acum_BCN[, 1],
+  P_moderada_mas_BCN = prob_acum_BCN[, 2],
+  P_grave_BCN = prob_acum_BCN[, 3],
+  theta = as.numeric(modelo_fao$a)
+) %>%
+  mutate(
+    # Probabilidades de categorías exclusivas
+    P_seguridad_BCN = 1 - P_leve_mas_BCN,
+    P_leve_BCN = P_leve_mas_BCN - P_moderada_mas_BCN,
+    P_moderada_BCN = P_moderada_mas_BCN - P_grave_BCN,
+    
+    # Porcentajes para facilitar la interpretación
+    P_leve_mas_pct_BCN = 100 * P_leve_mas_BCN,
+    P_moderada_mas_pct_BCN = 100 * P_moderada_mas_BCN,
+    P_grave_pct_BCN = 100 * P_grave_BCN,
+    P_seguridad_pct_BCN = 100 * P_seguridad_BCN,
+    P_leve_pct_BCN = 100 * P_leve_BCN,
+    P_moderada_pct_BCN = 100 * P_moderada_BCN
+  )
+
+print(tabla_asignacion_BCN)
+
+
+
+# Asignar puntuaciones y rangos a la BBDD Hogares
+
+adj_BCN <- as.numeric(Est_BCN$adj.thres)
+names(adj_BCN) <- c("FI_mild+", "FI_mod+", "FI_sev")
+
+
+FIES_hogares_BCN <- FIES_FOESSA_Hogares %>%
+  mutate(
+    Punt_Directa = rowSums(
+      across(all_of(items_FIES)),
+      na.rm = FALSE
+    )
+  ) %>%
+  left_join(
+    tabla_asignacion_BCN,
+    by = "Punt_Directa"
+  ) %>%
+  mutate(
+    Rango_BCN = case_when(
+      is.na(theta) ~ NA_character_,
+      theta >= adj_BCN["FI_sev"] ~ "Grave",
+      theta >= adj_BCN["FI_mod+"] ~ "Moderada",
+      theta >= adj_BCN["FI_mild+"] ~ "Leve",
+      TRUE ~ "Seguridad alimentaria"
+    )
+  ) %>%
+  select(
+    NUCU,
+    Punt_Directa,
+    theta,
+    starts_with("P_"),
+    Rango_BCN
+  )
+
+
+
+stopifnot(!anyDuplicated(FIES_hogares_BCN$NUCU)) #Comprobar que cada NUCU aparece una sola vez
+
+
+#Incorporar los resultados a la base de individuos
+#Todos los miembros del mismo hogar reciben los mismos valores
+
+FIES_FOESSA <- FIES_FOESSA %>%
+  select(
+    -any_of(c(
+      "Punt_Directa", "theta", "Rango_BCN",
+      "P_leve_mas_BCN", "P_moderada_mas_BCN", "P_grave_BCN",
+      "P_seguridad_BCN", "P_leve_BCN", "P_moderada_BCN",
+      "P_leve_mas_pct_BCN", "P_moderada_mas_pct_BCN",
+      "P_grave_pct_BCN", "P_seguridad_pct_BCN",
+      "P_leve_pct_BCN", "P_moderada_pct_BCN"
+    ))
+  ) %>%
+  left_join(
+    FIES_hogares_BCN,
+    by = "NUCU"
+  )
+
+
+# VER RESULTADOS
+
+
+table(FIES_FOESSA$Rango_BCN, useNA = "ifany")
+
+
+sum(is.na(FIES_FOESSA$Rango_BCN))
+
+
+FIES_FOESSA %>%
+  select(
+    NUCU, Punt_Directa, theta,
+    P_leve_mas_pct_BCN, P_moderada_mas_pct_BCN,
+    P_grave_pct_BCN, Rango_BCN
+  ) %>%
+  head(10)
+
+
+table(FIES_FOESSA$Rango_BCN)
+
+
+
+
+#---------------------------------------------------------
+# 2.3.c PUNTUACIONES Método RANGO OVI
+#---------------------------------------------------------
+
+items_FIES <- paste0("E84_", 1:8, "R")
+
+# 1. Tabla de probabilidades acumuladas OVI
+prob_acum_OVI <- Est_OVI$probs.rs
+
+colnames(prob_acum_OVI) <- c(
+  "P_temprana_mas_OVI",
+  "P_moderada_mas_OVI",
+  "P_grave_OVI"
+)
+
+tabla_asignacion_OVI <- data.frame(
+  Punt_Directa = 0:8,
+  P_temprana_mas_OVI = prob_acum_OVI[, 1],
+  P_moderada_mas_OVI = prob_acum_OVI[, 2],
+  P_grave_OVI = prob_acum_OVI[, 3],
+  theta = as.numeric(modelo_fao$a)
+) %>%
+  mutate(
+    # Probabilidades de categorías exclusivas
+    P_seguridad_OVI = 1 - P_temprana_mas_OVI,
+    P_temprana_OVI = P_temprana_mas_OVI - P_moderada_mas_OVI,
+    P_moderada_OVI = P_moderada_mas_OVI - P_grave_OVI,
+    
+    # Probabilidades en porcentaje
+    P_temprana_mas_pct_OVI = 100 * P_temprana_mas_OVI,
+    P_moderada_mas_pct_OVI = 100 * P_moderada_mas_OVI,
+    P_grave_pct_OVI = 100 * P_grave_OVI,
+    P_seguridad_pct_OVI = 100 * P_seguridad_OVI,
+    P_temprana_pct_OVI = 100 * P_temprana_OVI,
+    P_moderada_pct_OVI = 100 * P_moderada_OVI
+  )
+
+
+# 2. Calcular puntuación directa y asignar resultados a hogares
+
+adj_OVI <- as.numeric(Est_OVI$adj.thres)
+names(adj_OVI) <- c("FI_mild+", "FI_mod+", "FI_sev")
+
+
+
+FIES_hogares_OVI <- FIES_FOESSA_Hogares %>%
+  mutate(
+    Punt_Directa = rowSums(
+      across(all_of(items_FIES)),
+      na.rm = FALSE
+    )
+  ) %>%
+  left_join(
+    tabla_asignacion_OVI,
+    by = "Punt_Directa"
+  ) %>%
+  mutate(
+    Rango_OVI = case_when(
+      is.na(theta) ~ NA_character_,
+      theta >= adj_OVI["FI_sev"] ~ "Grave",
+      theta >= adj_OVI["FI_mod+"] ~ "Moderada",
+      theta >= adj_OVI["FI_mild+"] ~ "Temprana",
+      TRUE ~ "Seguridad alimentaria"
+    )
+  ) %>%
+  select(
+    NUCU,
+    Punt_Directa,
+    theta,
+    starts_with("P_"),
+    Rango_OVI
+  )
+
+
+# 3. Comprobar que cada hogar aparece una sola vez
+stopifnot(!anyDuplicated(FIES_hogares_OVI$NUCU))
+
+
+# 4. Incorporar los resultados a la base de individuos
+FIES_FOESSA <- FIES_FOESSA %>%
+  select(
+    -any_of(c(
+      "Punt_Directa", "theta", "Rango_OVI",
+      "P_temprana_mas_OVI", "P_moderada_ma_OVIs", "P_grave_OVI",
+      "P_seguridad_OVI", "P_temprana_OVI", "P_moderada_OVI",
+      "P_temprana_mas_pct_OVI", "P_moderada_mas_pct_OVI",
+      "P_grave_pct_OVI", "P_seguridad_pct",
+      "P_temprana_pct_OVI", "P_moderada_pct_BCN_OVI"
+    ))
+  ) %>%
+  left_join(
+    FIES_hogares_OVI,
+    by = "NUCU"
+  )
+
+
+# 5. Comprobaciones
+table(FIES_FOESSA$Rango_OVI, useNA = "ifany")
+
+sum(is.na(FIES_FOESSA$Rango_OVI))
+
+FIES_FOESSA %>%
+  select(
+    NUCU, Punt_Directa, theta,
+    P_temprana_mas_pct_OVI, P_moderada_mas_pct_OVI,
+    P_grave_pct_OVI, Rango_OVI
+  ) %>%
+  head(10)
+
+
+
+table(FIES_FOESSA$Rango_OVI)
+
+
+
+
+
+
+
+##================================================
+##3.Construcción de la puntuaciones directas (ponderadas)
+##================================================
+
+
+#1.Simple: suma directa / simple / raw (cada item positivo suma 1)
+#2.Ordinal (ponderada): se ordenan por b. El más sencillo punt 1, el más severo 8.
+#3. 3 niveles: se calcula la distancia de b en RASCH FAO
+#3(cont). Se hacen tres grupos y se pondera: 1-1-1-2-2-3-3-3
+#3(cont). Estos 3 grupos se basan en la distancia de b.
+#4. ThetaFAO: valor theta del modelo RASCH FAO.
+
+
+##Cálculo de las distancias de b en el modelo RASCH FAO
+
+modelo_fao$b
+
+b_fao <- c(
+  E84_3R = -3.1616289,
+  E84_2R = -2.4749146,
+  E84_1R = -2.3467643,
+  E84_5R = -0.4249442,
+  E84_4R = 0.3983739,
+  E84_7R = 1.8290983,
+  E84_6R = 2.6406331,
+  E84_8R = 3.5402540
+)
+
+data.frame(
+  item = names(b_fao),
+  b_fao = b_fao,
+  distancia = c(NA, diff(b_fao))
+)
+
+
+#-------------------------------
+# Ponderación (formas de corrección - ponderación)
+#-------------------------------
+
+w_simple <- rep(1, 8)
+
+w_ordinal <- c(3,2,1,5,4,7,6,8) #jerarquía respecto a b
+
+w_3niveles <- c(1, 1, 1, 2, 2, 3, 3, 3)
+
+names(w_ordinal) <- names(vars_FIES)
+
+# Índices
+score_simple <- rowSums(vars_FIES)
+
+score_ordinal <- as.numeric(
+  as.matrix(vars_FIES) %*% w_ordinal
+)
+
+score_3niveles <- as.numeric(
+  as.matrix(vars_FIES) %*% w_3niveles
+)
+
+
+
+# ------------------------------------------------------------
+# Correlación entre los índices y theta Rasch FAO
+# ------------------------------------------------------------
+
+cor_indices <- cor(
+  cbind(
+    Simple = score_simple,
+    Ordinal = score_ordinal,
+    TresNiveles = score_3niveles,
+    Theta= FIES_FOESSA$theta
+  ),
+  method = "spearman",
+  use = "complete.obs"
+)
+
+round(cor_indices, 6)
+
+
+# ------------------------------------------------------------
+# Distribución de los índices
+# ------------------------------------------------------------
+
+summary(score_simple)
+summary(score_ordinal)
+summary(score_3niveles)
+
+# ------------------------------------------------------------
+#Añadir puntuaciones a los sujetos
+# ------------------------------------------------------------
+
+FIES_FOESSA$score_simple <- rowSums(vars_FIES)
+
+FIES_FOESSA$score_ordinal <- as.numeric(
+  as.matrix(vars_FIES) %*% w_ordinal
+)
+
+FIES_FOESSA$score_3niveles <- as.numeric(
+  as.matrix(vars_FIES) %*% w_3niveles
+)
+
+write_xlsx(as.data.frame(FIES_FOESSA), "Valores_Rangos_Individuos_BBDD.xlsx")
+
+
+
+
+#=========================================================
+#4.Se exportan las puntuaciones (Rangos, prevalencias y puntuaciones directas) en un Excel
+#=========================================================
+
+write_xlsx(as.data.frame(FIES_FOESSA), "Valores_Rangos_Individuos_BBDD.xlsx")
+
+
+
