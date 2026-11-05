@@ -1,0 +1,49 @@
+* Encoding: UTF-8.
+
+**Cáculo BITH en FOESSA**
+
+COMPUTE MiembroBITH=0.
+COMPUTE HorsTrabSem = 0.
+ EXECUTE.
+
+
+
+IF  (A1 >= 16  &  A1 <= 64 & D43 ~= 3 & D43 ~= 4 & D43 ~= 6) MiembroBITH=1.
+EXECUTE.
+
+*Si todos los valores de una suma son perdidos el resultado no es cero, es perdido.*
+
+IF (MiembroBITH = 1) HorsTrabSem = SUM.1(D49_1 TO D49_12).
+VARIABLE LABELS HorsTrabSem 'Horas de trabajo acumuladas en el año'.
+EXECUTE.
+
+
+AGGREGATE
+  /OUTFILE=* MODE=ADDVARIABLES
+  /BREAK=NUCU
+  /MiembroBITH_sum=SUM(MiembroBITH).
+
+AGGREGATE
+  /OUTFILE=* MODE=ADDVARIABLES
+  /BREAK=NUCU
+  /HorsTrabSem_sum=SUM(HorsTrabSem).
+
+COMPUTE UmbralBITH=MiembroBITH_sum * 40 * 12 * 0.20.
+VARIABLE LABELS  UmbralBITH 'Umbral BITH'.
+EXECUTE.
+
+
+
+IF  (MiembroBITH_sum > 0) BITH_proxy=0.
+VARIABLE LABELS  BITH_proxy 'Tipo hogar BITH'.
+EXECUTE.
+
+IF  (MiembroBITH_sum > 0 & HorsTrabSem_sum < UmbralBITH) BITH_proxy=1.
+VARIABLE LABELS  BITH_proxy 'Tipo hogar BITH'.
+EXECUTE.
+
+
+* Borrar variables innecesarias
+
+DELETE VARIABLES MiembroBITH HorsTrabSem MiembroBITH_sum HorsTrabSem_sum UmbralBITH.
+EXECUTE.
