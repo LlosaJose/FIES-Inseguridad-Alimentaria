@@ -1,0 +1,41 @@
+* Encoding: UTF-8.
+
+
+**Cálculo pobreza relativa y severa, umbrales 2023
+*10990 - Umbral pobreza año
+*7.326,34 - umbral pobreza severa
+
+WEIGHT OFF.
+
+
+*Cálculo de umbrales
+
+COMPUTE Umbral_Hogar_Pob=UC_HOGAR * 10990.
+VARIABLE LABELS  Umbral_Hogar_Pob 'Umbral hogar pobreza relativa (60% med)'.
+EXECUTE.
+
+COMPUTE Umbral_Hogar_Pob_Sev=UC_HOGAR * 7326.34.
+VARIABLE LABELS  Umbral_Hogar_Pob_Sev 'Umbral hogar pobreza severa (40% med)'.
+EXECUTE.
+
+
+
+*cálculo pobreza relativa
+
+COMPUTE Pob_relativa=0.
+VARIABLE LABELS  Pob_relativa 'Pobreza relativa (umbral 2023, 10.990€/año)'.
+EXECUTE.
+
+IF  (ingresosfiables < Umbral_Hogar_Pob) Pob_relativa=1.
+VARIABLE LABELS  Pob_relativa 'Pobreza relativa (umbral 2023, 10.990€/año)'.
+EXECUTE.
+
+*cálculo pobreza severa
+
+COMPUTE Pob_severa=0.
+VARIABLE LABELS  Pob_severa 'Pobreza severa (umbral severa 2023, 7.326,34€/año)'.
+EXECUTE.
+
+IF  (ingresosfiables < Umbral_Hogar_Pob_Sev) Pob_severa=1.
+VARIABLE LABELS  Pob_severa 'Pobreza severa (umbral severa 2023, 7.326,34€/año)'.
+EXECUTE.
