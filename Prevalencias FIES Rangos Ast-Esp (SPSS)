@@ -1,0 +1,616 @@
+* Encoding: UTF-8.
+
+
+***Se utilizan las medias de los cálculos de prevalencias ptc FAO y OVI
+
+
+WEIGHT BY peso.
+
+
+
+* Prevalencias hogares Rangos FAO
+
+USE ALL.
+FILTER BY SELEC_HOGAR.
+EXECUTE.
+
+CTABLES
+  /VLABELS VARIABLES=P_moderada_pct_FAO P_grave_pct_FAO DISPLAY=LABEL
+  /TABLE BY P_moderada_pct_FAO [MEAN PCTPAREN40.2] + P_grave_pct_FAO [MEAN PCTPAREN40.2]
+  /CRITERIA CILEVEL=95.
+
+FILTER OFF.
+USE ALL.
+EXECUTE.
+
+
+* Prevalencias hogares Rangos OVI
+
+USE ALL.
+FILTER BY SELEC_HOGAR.
+EXECUTE.
+
+CTABLES
+  /VLABELS VARIABLES=P_seguridad_pct_OVI P_temprana_pct_OVI P_moderada_pct_OVI P_grave_pct_OVI 
+    DISPLAY=LABEL
+  /TABLE BY P_seguridad_pct_OVI [MEAN PCTPAREN40.2] + P_temprana_pct_OVI [MEAN PCTPAREN40.2] + 
+    P_moderada_pct_OVI [MEAN PCTPAREN40.2] + P_grave_pct_OVI [MEAN PCTPAREN40.2]
+  /CRITERIA CILEVEL=95.
+
+FILTER OFF.
+USE ALL.
+EXECUTE.
+
+
+* Prevalencias personas Rangos FAO
+
+CTABLES
+  /VLABELS VARIABLES=P_moderada_pct_FAO P_grave_pct_FAO DISPLAY=LABEL
+  /TABLE BY P_moderada_pct_FAO [MEAN PCTPAREN40.2] + P_grave_pct_FAO [MEAN PCTPAREN40.2]
+  /CRITERIA CILEVEL=95.
+
+
+
+* Prevalencias personas Rangos FAO * Género
+
+CTABLES
+  /VLABELS VARIABLES=A2 P_moderada_pct_FAO P_grave_pct_FAO DISPLAY=LABEL
+  /TABLE A2 BY P_moderada_pct_FAO [MEAN PCTPAREN40.2] + P_grave_pct_FAO [MEAN PCTPAREN40.2]
+  /CATEGORIES VARIABLES=A2 ORDER=A KEY=VALUE EMPTY=INCLUDE
+  /CRITERIA CILEVEL=95.
+
+
+* Prevalencias personas Rangos OVI
+
+CTABLES
+  /VLABELS VARIABLES=P_seguridad_pct_OVI P_temprana_pct_OVI P_moderada_pct_OVI P_grave_pct_OVI 
+    DISPLAY=LABEL
+  /TABLE BY P_seguridad_pct_OVI [MEAN PCTPAREN40.2] + P_temprana_pct_OVI [MEAN PCTPAREN40.2] + 
+    P_moderada_pct_OVI [MEAN PCTPAREN40.2] + P_grave_pct_OVI [MEAN PCTPAREN40.2]
+  /CRITERIA CILEVEL=95.
+
+* Prevalencias personas Rangos OVI * Género
+
+CTABLES
+  /VLABELS VARIABLES=A2 P_seguridad_pct_OVI P_temprana_pct_OVI P_moderada_pct_OVI P_grave_pct_OVI 
+    DISPLAY=LABEL
+  /TABLE A2 BY P_seguridad_pct_OVI [MEAN PCTPAREN40.2] + P_temprana_pct_OVI [MEAN PCTPAREN40.2] + 
+    P_moderada_pct_OVI [MEAN PCTPAREN40.2] + P_grave_pct_OVI [MEAN PCTPAREN40.2]
+  /CATEGORIES VARIABLES=A2 ORDER=A KEY=VALUE EMPTY=INCLUDE
+  /CRITERIA CILEVEL=95.
+
+* Prevalencias personas Rangos FAO * CCAA
+
+CTABLES
+  /VLABELS VARIABLES=CCAA P_moderada_pct_FAO P_grave_pct_FAO DISPLAY=LABEL
+  /TABLE CCAA BY P_moderada_pct_FAO [MEAN PCTPAREN40.2] + P_grave_pct_FAO [MEAN PCTPAREN40.2]
+  /CATEGORIES VARIABLES=CCAA ORDER=A KEY=VALUE EMPTY=INCLUDE TOTAL=YES POSITION=AFTER
+  /CRITERIA CILEVEL=95.
+
+
+
+* Prevalencias personas Rangos FAO * CCAA (desagregado género)
+
+CTABLES
+  /VLABELS VARIABLES=CCAA P_moderada_pct_FAO A2 P_grave_pct_FAO DISPLAY=LABEL
+  /TABLE CCAA BY P_moderada_pct_FAO [MEAN PCTPAREN40.2] > A2 + P_grave_pct_FAO [MEAN PCTPAREN40.2] 
+    > A2
+  /CATEGORIES VARIABLES=CCAA ORDER=A KEY=VALUE EMPTY=INCLUDE TOTAL=YES POSITION=AFTER
+  /CATEGORIES VARIABLES=A2 ORDER=A KEY=VALUE EMPTY=INCLUDE
+  /CRITERIA CILEVEL=95.
+
+
+* Prevalencias personas Rangos OVI * CCAA
+
+CTABLES
+  /VLABELS VARIABLES=CCAA P_seguridad_pct_OVI P_temprana_pct_OVI P_moderada_pct_OVI P_grave_pct_OVI 
+    DISPLAY=LABEL
+  /TABLE CCAA BY P_seguridad_pct_OVI [MEAN PCTPAREN40.2] + P_temprana_pct_OVI [MEAN PCTPAREN40.2] + 
+    P_moderada_pct_OVI [MEAN PCTPAREN40.2] + P_grave_pct_OVI [MEAN PCTPAREN40.2]
+  /CATEGORIES VARIABLES=CCAA ORDER=A KEY=VALUE EMPTY=INCLUDE TOTAL=YES POSITION=AFTER
+  /CRITERIA CILEVEL=95.
+
+
+
+* Prevalencias personas Rangos OVI * CCAA (desagregado género)
+
+CTABLES
+  /VLABELS VARIABLES=CCAA P_seguridad_pct_OVI A2 P_temprana_pct_OVI P_moderada_pct_OVI 
+    P_grave_pct_OVI DISPLAY=LABEL
+  /TABLE CCAA BY P_seguridad_pct_OVI [MEAN PCTPAREN40.2] > A2 + P_temprana_pct_OVI [MEAN 
+    PCTPAREN40.2] > A2 + P_moderada_pct_OVI [MEAN PCTPAREN40.2] > A2 + P_grave_pct_OVI [MEAN 
+    PCTPAREN40.2] > A2
+  /CATEGORIES VARIABLES=CCAA ORDER=A KEY=VALUE EMPTY=INCLUDE TOTAL=YES POSITION=AFTER
+  /CATEGORIES VARIABLES=A2 ORDER=A KEY=VALUE EMPTY=INCLUDE
+  /CRITERIA CILEVEL=95.
+
+
+
+**Generar prevalencia NO FIES / SI FIES (Rangos FAO)
+
+WEIGHT OFF.
+
+FILTER OFF.
+USE ALL.
+EXECUTE.
+
+COMPUTE P_NO_FIES_pct_FAO=100-(P_grave_pct_FAO + P_moderada_pct_FAO).
+EXECUTE.
+
+
+COMPUTE P_FIES_pct_FAO=P_moderada_mas_pct_FAO.
+VARIABLE LABELS  P_FIES_pct_FAO 'Prevalencia inseguridad alimentaria FAO (Algún nivel de '+
+    'inseguridad)'.
+EXECUTE.
+
+COMPUTE Comprobar=P_FIES_pct_FAO + P_NO_FIES_pct_FAO.
+VARIABLE LABELS  Comprobar 'Comprobar'.
+EXECUTE.
+
+*Comprobación debe ser  == 100
+
+DESCRIPTIVES VARIABLES=Comprobar
+  /STATISTICS=MEAN STDDEV MIN MAX.
+
+DELETE VARIABLES Comprobar. 
+
+
+WEIGHT BY peso.
+
+
+
+**Generar prevalencia NO FIES / SI FIES (Rangos OVI)
+
+WEIGHT OFF.
+
+FILTER OFF.
+USE ALL.
+EXECUTE.
+
+COMPUTE P_NO_FIES_pct_OVI=P_seguridad_pct_OVI.
+EXECUTE.
+
+COMPUTE P_FIES_pct_OVI=P_temprana_mas_pct_OVI.
+VARIABLE LABELS  P_FIES_pct_OVI 'Prevalencia FIES Rangos OVI (cualqueir nivel de FIES)'.
+EXECUTE.
+
+
+COMPUTE Comprobar=P_FIES_pct_OVI + P_NO_FIES_pct_OVI.
+VARIABLE LABELS  Comprobar 'Comprobar'.
+EXECUTE.
+
+*Comprobación debe ser  == 100
+
+DESCRIPTIVES VARIABLES=Comprobar
+  /STATISTICS=MEAN STDDEV MIN MAX.
+
+DELETE VARIABLES Comprobar. 
+
+
+WEIGHT BY peso.
+
+
+* RANGOS FAO 2 niveles fies (Prevalencia SÍ FIES / NO FIES) * CCAA y total
+
+WEIGHT BY peso.
+
+CTABLES
+  /VLABELS VARIABLES=CCAA P_NO_FIES_pct_FAO P_FIES_pct_FAO DISPLAY=LABEL
+  /TABLE CCAA BY P_NO_FIES_pct_FAO [MEAN PCTPAREN40.2] + P_FIES_pct_FAO [MEAN PCTPAREN40.2]
+  /CATEGORIES VARIABLES=CCAA ORDER=A KEY=VALUE EMPTY=INCLUDE TOTAL=YES POSITION=AFTER
+  /CRITERIA CILEVEL=95.
+
+
+* RANGOS OVI 2 niveles fies (Prevalencia SÍ FIES / NO FIES) * CCAA y total * Género
+
+CTABLES
+  /VLABELS VARIABLES=CCAA P_NO_FIES_pct_FAO A2 P_FIES_pct_FAO DISPLAY=LABEL
+  /TABLE CCAA BY P_NO_FIES_pct_FAO [MEAN PCTPAREN40.2] > A2 + P_FIES_pct_FAO [MEAN PCTPAREN40.2] > 
+    A2
+  /CATEGORIES VARIABLES=CCAA ORDER=A KEY=VALUE EMPTY=INCLUDE TOTAL=YES POSITION=AFTER
+  /CATEGORIES VARIABLES=A2 ORDER=A KEY=VALUE EMPTY=INCLUDE
+  /CRITERIA CILEVEL=95.
+
+
+
+
+* Prevalencias personas rangos OVI * Exclusión FOESSA
+
+CTABLES
+  /VLABELS VARIABLES=excl4grupos P_seguridad_pct_OVI P_temprana_pct_OVI P_moderada_pct_OVI 
+    P_grave_pct_OVI DISPLAY=LABEL
+  /TABLE excl4grupos BY P_seguridad_pct_OVI [MEAN PCTPAREN40.2] + P_temprana_pct_OVI [MEAN 
+    PCTPAREN40.2] + P_moderada_pct_OVI [MEAN PCTPAREN40.2] + P_grave_pct_OVI [MEAN PCTPAREN40.2]
+  /CATEGORIES VARIABLES=excl4grupos ORDER=A KEY=VALUE EMPTY=INCLUDE
+  /CRITERIA CILEVEL=95.
+
+* Prevalencias personas rangos OVI * Exclusión FOESSA * gender
+
+CTABLES
+  /VLABELS VARIABLES=excl4grupos A2 P_seguridad_pct_OVI P_temprana_pct_OVI P_moderada_pct_OVI 
+    P_grave_pct_OVI DISPLAY=LABEL
+  /TABLE excl4grupos > A2 BY P_seguridad_pct_OVI [MEAN PCTPAREN40.2] + P_temprana_pct_OVI [MEAN 
+    PCTPAREN40.2] + P_moderada_pct_OVI [MEAN PCTPAREN40.2] + P_grave_pct_OVI [MEAN PCTPAREN40.2]
+  /CATEGORIES VARIABLES=excl4grupos A2 ORDER=A KEY=VALUE EMPTY=INCLUDE
+  /CRITERIA CILEVEL=95.
+
+
+
+* Prevalencias personas rangos FAO * Exclusión FOESSA
+
+CTABLES
+  /VLABELS VARIABLES=excl4grupos P_moderada_pct_FAO P_grave_pct_FAO DISPLAY=LABEL
+  /TABLE excl4grupos BY P_moderada_pct_FAO [MEAN PCTPAREN40.2] + P_grave_pct_FAO [MEAN PCTPAREN40.2]    
+  /CATEGORIES VARIABLES=excl4grupos ORDER=A KEY=VALUE EMPTY=INCLUDE
+  /CRITERIA CILEVEL=95.
+
+
+* Prevalencias personas rangos FAO * Exclusión FOESSA * gender
+
+CTABLES
+  /VLABELS VARIABLES=excl4grupos A2 P_moderada_pct_FAO P_grave_pct_FAO DISPLAY=LABEL
+  /TABLE excl4grupos > A2 BY P_moderada_pct_FAO [MEAN PCTPAREN40.2] + P_grave_pct_FAO [MEAN 
+    PCTPAREN40.2]
+  /CATEGORIES VARIABLES=excl4grupos A2 ORDER=A KEY=VALUE EMPTY=INCLUDE
+  /CRITERIA CILEVEL=95.
+
+
+
+
+*Prevalencias FIES FAO - Hogares Menores (medida hogar)
+    
+USE ALL.
+FILTER BY SELEC_HOGAR.
+EXECUTE.
+
+CTABLES
+  /VLABELS VARIABLES=menor18_max P_moderada_pct_FAO P_grave_pct_FAO DISPLAY=LABEL
+  /TABLE menor18_max BY P_moderada_pct_FAO [MEAN PCTPAREN40.2] + P_grave_pct_FAO [MEAN PCTPAREN40.2]    
+  /CATEGORIES VARIABLES=menor18_max ORDER=A KEY=VALUE EMPTY=EXCLUDE
+  /CRITERIA CILEVEL=95.
+
+
+FILTER OFF.
+USE ALL.
+EXECUTE.
+
+
+
+*Prevalencias FIES OVI - Hogares Menores (medida hogar)
+    
+USE ALL.
+FILTER BY SELEC_HOGAR.
+EXECUTE.
+
+CTABLES
+  /VLABELS VARIABLES=menor18_max P_seguridad_pct_OVI P_temprana_pct_OVI P_moderada_pct_OVI 
+    P_grave_pct_OVI DISPLAY=LABEL
+  /TABLE menor18_max BY P_seguridad_pct_OVI [MEAN PCTPAREN40.2] + P_temprana_pct_OVI [MEAN 
+    PCTPAREN40.2] + P_moderada_pct_OVI [MEAN PCTPAREN40.2] + P_grave_pct_OVI [MEAN PCTPAREN40.2]
+  /CATEGORIES VARIABLES=menor18_max ORDER=A KEY=VALUE EMPTY=EXCLUDE
+  /CRITERIA CILEVEL=95.
+
+
+FILTER OFF.
+USE ALL.
+EXECUTE.
+
+
+
+
+
+*Prevalencias FIES FAO - Hogares monomarentales (medida hogar)
+
+USE ALL.
+FILTER BY SELEC_HOGAR.
+EXECUTE.
+
+CTABLES
+  /VLABELS VARIABLES=hmp_max P_moderada_pct_FAO P_grave_pct_FAO DISPLAY=LABEL
+  /TABLE hmp_max BY P_moderada_pct_FAO [MEAN PCTPAREN40.2] + P_grave_pct_FAO [MEAN PCTPAREN40.2]
+  /CATEGORIES VARIABLES=hmp_max ORDER=A KEY=VALUE EMPTY=EXCLUDE
+  /CRITERIA CILEVEL=95.
+
+FILTER OFF.
+USE ALL.
+EXECUTE.
+
+
+
+
+*Prevalencias FIES OVI - Hogares monomarentales (medida hogar)
+
+USE ALL.
+FILTER BY SELEC_HOGAR.
+EXECUTE.
+
+CTABLES
+  /VLABELS VARIABLES=hmp_max P_seguridad_pct_OVI P_temprana_pct_OVI P_moderada_pct_OVI 
+    P_grave_pct_OVI DISPLAY=LABEL
+  /TABLE hmp_max BY P_seguridad_pct_OVI [MEAN PCTPAREN40.2] + P_temprana_pct_OVI [MEAN 
+    PCTPAREN40.2] + P_moderada_pct_OVI [MEAN PCTPAREN40.2] + P_grave_pct_OVI [MEAN PCTPAREN40.2]
+  /CATEGORIES VARIABLES=hmp_max ORDER=A KEY=VALUE EMPTY=EXCLUDE
+  /CRITERIA CILEVEL=95.
+
+FILTER OFF.
+USE ALL.
+EXECUTE.
+
+
+
+
+
+*Prevalencias FIES FAO - 3 grupos tamaño familia (medida hogar)
+
+USE ALL.
+FILTER BY SELEC_HOGAR.
+EXECUTE.
+
+CTABLES
+  /VLABELS VARIABLES=tamañofamilia P_moderada_pct_FAO P_grave_pct_FAO DISPLAY=LABEL
+  /TABLE tamañofamilia BY P_moderada_pct_FAO [MEAN PCTPAREN40.2] + P_grave_pct_FAO [MEAN 
+    PCTPAREN40.2]
+  /CATEGORIES VARIABLES=tamañofamilia ORDER=A KEY=VALUE EMPTY=INCLUDE
+  /CRITERIA CILEVEL=95.
+
+FILTER OFF.
+USE ALL.
+EXECUTE.
+
+
+
+*Prevalencias FIES OVI - 3 grupos tamaño familia (medida hogar)
+
+
+USE ALL.
+FILTER BY SELEC_HOGAR.
+EXECUTE.
+
+CTABLES
+  /VLABELS VARIABLES=tamañofamilia P_seguridad_pct_OVI P_temprana_pct_OVI P_moderada_pct_OVI 
+    P_grave_pct_OVI DISPLAY=LABEL
+  /TABLE tamañofamilia BY P_seguridad_pct_OVI [MEAN PCTPAREN40.2] + P_temprana_pct_OVI [MEAN 
+    PCTPAREN40.2] + P_moderada_pct_OVI [MEAN PCTPAREN40.2] + P_grave_pct_OVI [MEAN PCTPAREN40.2]
+  /CATEGORIES VARIABLES=tamañofamilia ORDER=A KEY=VALUE EMPTY=EXCLUDE
+  /CRITERIA CILEVEL=95.
+
+FILTER OFF.
+USE ALL.
+EXECUTE.
+
+
+
+***************==========================
+*****RÉPLICA EN ASTURIAS
+***************==========================
+
+
+
+****Selección Asturias
+
+USE ALL.
+COMPUTE filter_$=(CCAA = 3).
+VARIABLE LABELS filter_$ 'CCAA = 3 (FILTER)'.
+VALUE LABELS filter_$ 0 'Not Selected' 1 'Selected'.
+FORMATS filter_$ (f1.0).
+FILTER BY filter_$.
+EXECUTE.
+
+
+WEIGHT BY peso.
+
+
+***Comprobación - deben ser sólo Asturias.
+
+DESCRIPTIVES VARIABLES=CCAA
+  /STATISTICS=MEAN STDDEV MIN MAX.
+
+* Prevalencias personas rangos OVI * Exclusión FOESSA
+
+CTABLES
+  /VLABELS VARIABLES=excl4grupos P_seguridad_pct_OVI P_temprana_pct_OVI P_moderada_pct_OVI 
+    P_grave_pct_OVI DISPLAY=LABEL
+  /TABLE excl4grupos BY P_seguridad_pct_OVI [MEAN PCTPAREN40.2] + P_temprana_pct_OVI [MEAN 
+    PCTPAREN40.2] + P_moderada_pct_OVI [MEAN PCTPAREN40.2] + P_grave_pct_OVI [MEAN PCTPAREN40.2]
+  /CATEGORIES VARIABLES=excl4grupos ORDER=A KEY=VALUE EMPTY=INCLUDE
+  /CRITERIA CILEVEL=95.
+
+* Prevalencias personas rangos OVI * Exclusión FOESSA * gender
+
+CTABLES
+  /VLABELS VARIABLES=excl4grupos A2 P_seguridad_pct_OVI P_temprana_pct_OVI P_moderada_pct_OVI 
+    P_grave_pct_OVI DISPLAY=LABEL
+  /TABLE excl4grupos > A2 BY P_seguridad_pct_OVI [MEAN PCTPAREN40.2] + P_temprana_pct_OVI [MEAN 
+    PCTPAREN40.2] + P_moderada_pct_OVI [MEAN PCTPAREN40.2] + P_grave_pct_OVI [MEAN PCTPAREN40.2]
+  /CATEGORIES VARIABLES=excl4grupos A2 ORDER=A KEY=VALUE EMPTY=INCLUDE
+  /CRITERIA CILEVEL=95.
+
+
+
+* Prevalencias personas rangos FAO * Exclusión FOESSA
+
+CTABLES
+  /VLABELS VARIABLES=excl4grupos P_moderada_pct_FAO P_grave_pct_FAO DISPLAY=LABEL
+  /TABLE excl4grupos BY P_moderada_pct_FAO [MEAN PCTPAREN40.2] + P_grave_pct_FAO [MEAN PCTPAREN40.2]    
+  /CATEGORIES VARIABLES=excl4grupos ORDER=A KEY=VALUE EMPTY=INCLUDE
+  /CRITERIA CILEVEL=95.
+
+
+* Prevalencias personas rangos FAO * Exclusión FOESSA * gender
+
+CTABLES
+  /VLABELS VARIABLES=excl4grupos A2 P_moderada_pct_FAO P_grave_pct_FAO DISPLAY=LABEL
+  /TABLE excl4grupos > A2 BY P_moderada_pct_FAO [MEAN PCTPAREN40.2] + P_grave_pct_FAO [MEAN 
+    PCTPAREN40.2]
+  /CATEGORIES VARIABLES=excl4grupos A2 ORDER=A KEY=VALUE EMPTY=INCLUDE
+  /CRITERIA CILEVEL=95.
+
+
+
+
+*Prevalencias FIES FAO - Hogares Menores (medida hogar)
+    
+
+
+USE ALL.
+COMPUTE filter_$=(CCAA = 3 & SELEC_HOGAR = 1).
+VARIABLE LABELS filter_$ 'CCAA = 3 & SELEC_HOGAR = 1 (FILTER)'.
+VALUE LABELS filter_$ 0 'Not Selected' 1 'Selected'.
+FORMATS filter_$ (f1.0).
+FILTER BY filter_$.
+EXECUTE.
+
+
+CTABLES
+  /VLABELS VARIABLES=menor18_max P_moderada_pct_FAO P_grave_pct_FAO DISPLAY=LABEL
+  /TABLE menor18_max BY P_moderada_pct_FAO [MEAN PCTPAREN40.2] + P_grave_pct_FAO [MEAN PCTPAREN40.2]    
+  /CATEGORIES VARIABLES=menor18_max ORDER=A KEY=VALUE EMPTY=EXCLUDE
+  /CRITERIA CILEVEL=95.
+
+
+FILTER OFF.
+USE ALL.
+EXECUTE.
+
+
+
+*Prevalencias FIES OVI - Hogares Menores (medida hogar)
+    
+
+
+USE ALL.
+COMPUTE filter_$=(CCAA = 3 & SELEC_HOGAR = 1).
+VARIABLE LABELS filter_$ 'CCAA = 3 & SELEC_HOGAR = 1 (FILTER)'.
+VALUE LABELS filter_$ 0 'Not Selected' 1 'Selected'.
+FORMATS filter_$ (f1.0).
+FILTER BY filter_$.
+EXECUTE.
+
+CTABLES
+  /VLABELS VARIABLES=menor18_max P_seguridad_pct_OVI P_temprana_pct_OVI P_moderada_pct_OVI 
+    P_grave_pct_OVI DISPLAY=LABEL
+  /TABLE menor18_max BY P_seguridad_pct_OVI [MEAN PCTPAREN40.2] + P_temprana_pct_OVI [MEAN 
+    PCTPAREN40.2] + P_moderada_pct_OVI [MEAN PCTPAREN40.2] + P_grave_pct_OVI [MEAN PCTPAREN40.2]
+  /CATEGORIES VARIABLES=menor18_max ORDER=A KEY=VALUE EMPTY=EXCLUDE
+  /CRITERIA CILEVEL=95.
+
+
+FILTER OFF.
+USE ALL.
+EXECUTE.
+
+
+
+
+
+*Prevalencias FIES FAO - Hogares monomarentales (medida hogar)
+
+
+
+USE ALL.
+COMPUTE filter_$=(CCAA = 3 & SELEC_HOGAR = 1).
+VARIABLE LABELS filter_$ 'CCAA = 3 & SELEC_HOGAR = 1 (FILTER)'.
+VALUE LABELS filter_$ 0 'Not Selected' 1 'Selected'.
+FORMATS filter_$ (f1.0).
+FILTER BY filter_$.
+EXECUTE.
+
+
+CTABLES
+  /VLABELS VARIABLES=hmp_max P_moderada_pct_FAO P_grave_pct_FAO DISPLAY=LABEL
+  /TABLE hmp_max BY P_moderada_pct_FAO [MEAN PCTPAREN40.2] + P_grave_pct_FAO [MEAN PCTPAREN40.2]
+  /CATEGORIES VARIABLES=hmp_max ORDER=A KEY=VALUE EMPTY=EXCLUDE
+  /CRITERIA CILEVEL=95.
+
+FILTER OFF.
+USE ALL.
+EXECUTE.
+
+
+
+
+*Prevalencias FIES OVI - Hogares monomarentales (medida hogar)
+
+
+USE ALL.
+COMPUTE filter_$=(CCAA = 3 & SELEC_HOGAR = 1).
+VARIABLE LABELS filter_$ 'CCAA = 3 & SELEC_HOGAR = 1 (FILTER)'.
+VALUE LABELS filter_$ 0 'Not Selected' 1 'Selected'.
+FORMATS filter_$ (f1.0).
+FILTER BY filter_$.
+EXECUTE.
+
+
+CTABLES
+  /VLABELS VARIABLES=hmp_max P_seguridad_pct_OVI P_temprana_pct_OVI P_moderada_pct_OVI 
+    P_grave_pct_OVI DISPLAY=LABEL
+  /TABLE hmp_max BY P_seguridad_pct_OVI [MEAN PCTPAREN40.2] + P_temprana_pct_OVI [MEAN 
+    PCTPAREN40.2] + P_moderada_pct_OVI [MEAN PCTPAREN40.2] + P_grave_pct_OVI [MEAN PCTPAREN40.2]
+  /CATEGORIES VARIABLES=hmp_max ORDER=A KEY=VALUE EMPTY=EXCLUDE
+  /CRITERIA CILEVEL=95.
+
+FILTER OFF.
+USE ALL.
+EXECUTE.
+
+
+
+
+
+*Prevalencias FIES FAO - 3 grupos tamaño familia (medida hogar)
+
+
+
+USE ALL.
+COMPUTE filter_$=(CCAA = 3 & SELEC_HOGAR = 1).
+VARIABLE LABELS filter_$ 'CCAA = 3 & SELEC_HOGAR = 1 (FILTER)'.
+VALUE LABELS filter_$ 0 'Not Selected' 1 'Selected'.
+FORMATS filter_$ (f1.0).
+FILTER BY filter_$.
+EXECUTE.
+
+
+CTABLES
+  /VLABELS VARIABLES=tamañofamilia P_moderada_pct_FAO P_grave_pct_FAO DISPLAY=LABEL
+  /TABLE tamañofamilia BY P_moderada_pct_FAO [MEAN PCTPAREN40.2] + P_grave_pct_FAO [MEAN 
+    PCTPAREN40.2]
+  /CATEGORIES VARIABLES=tamañofamilia ORDER=A KEY=VALUE EMPTY=INCLUDE
+  /CRITERIA CILEVEL=95.
+
+FILTER OFF.
+USE ALL.
+EXECUTE.
+
+
+
+*Prevalencias FIES OVI - 3 grupos tamaño familia (medida hogar)
+
+
+
+
+USE ALL.
+COMPUTE filter_$=(CCAA = 3 & SELEC_HOGAR = 1).
+VARIABLE LABELS filter_$ 'CCAA = 3 & SELEC_HOGAR = 1 (FILTER)'.
+VALUE LABELS filter_$ 0 'Not Selected' 1 'Selected'.
+FORMATS filter_$ (f1.0).
+FILTER BY filter_$.
+EXECUTE.
+
+
+CTABLES
+  /VLABELS VARIABLES=tamañofamilia P_seguridad_pct_OVI P_temprana_pct_OVI P_moderada_pct_OVI 
+    P_grave_pct_OVI DISPLAY=LABEL
+  /TABLE tamañofamilia BY P_seguridad_pct_OVI [MEAN PCTPAREN40.2] + P_temprana_pct_OVI [MEAN 
+    PCTPAREN40.2] + P_moderada_pct_OVI [MEAN PCTPAREN40.2] + P_grave_pct_OVI [MEAN PCTPAREN40.2]
+  /CATEGORIES VARIABLES=tamañofamilia ORDER=A KEY=VALUE EMPTY=EXCLUDE
+  /CRITERIA CILEVEL=95.
+
+FILTER OFF.
+USE ALL.
+EXECUTE.
+
+
+
+
+
+WEIGHT OFF.
