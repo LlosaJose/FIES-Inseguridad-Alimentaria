@@ -1,0 +1,115 @@
+* Encoding: UTF-8.
+
+WEIGHT BY peso.
+
+FILTER OFF.
+USE ALL.
+EXECUTE.
+
+
+**Comparación de medias de PMS, BITH, Pob Rel, Pob Severa
+
+T-TEST GROUPS=PMS_proxy(0 1)
+  /MISSING=ANALYSIS
+  /VARIABLES=TOT_FIES_SIMPLE
+  /ES DISPLAY(TRUE)
+  /CRITERIA=CI(.95).
+
+T-TEST GROUPS=BITH_proxy(0 1)
+  /MISSING=ANALYSIS
+  /VARIABLES=TOT_FIES_SIMPLE
+  /ES DISPLAY(TRUE)
+  /CRITERIA=CI(.95).
+
+T-TEST GROUPS=Pob_relativa(0 1)
+  /MISSING=ANALYSIS
+  /VARIABLES=TOT_FIES_SIMPLE
+  /ES DISPLAY(TRUE)
+  /CRITERIA=CI(.95).
+
+T-TEST GROUPS=Pob_severa(0 1)
+  /MISSING=ANALYSIS
+  /VARIABLES=TOT_FIES_SIMPLE
+  /ES DISPLAY(TRUE)
+  /CRITERIA=CI(.95).
+
+
+
+**Frecuencias de puntuaciones 0, 1,2,3...8 (útil para gráficos)
+
+CROSSTABS
+  /TABLES=PMS_proxy BITH_proxy Pob_relativa Pob_severa BY TOT_FIES_SIMPLE
+  /FORMAT=AVALUE TABLES
+  /CELLS=COUNT
+  /COUNT ROUND CELL.
+
+
+
+
+* Proxys AROPE * Puntuación directa (simple) FIES
+
+CTABLES
+  /VLABELS VARIABLES=PMS_proxy BITH_proxy Pob_relativa Pob_severa TOT_FIES_SIMPLE DISPLAY=LABEL
+  /TABLE PMS_proxy + BITH_proxy + Pob_relativa + Pob_severa BY TOT_FIES_SIMPLE [MEAN]
+  /CATEGORIES VARIABLES=PMS_proxy BITH_proxy Pob_relativa Pob_severa ORDER=A KEY=VALUE EMPTY=INCLUDE    
+  /CRITERIA CILEVEL=95.
+
+
+
+
+*Regresion lineal punto 0-8 y tres indicadores AROPE proxy
+
+REGRESSION
+  /MISSING LISTWISE
+  /STATISTICS COEFF OUTS R ANOVA
+  /CRITERIA=PIN(.05) POUT(.10)
+  /NOORIGIN 
+  /DEPENDENT TOT_FIES_SIMPLE
+  /METHOD=ENTER PMS_proxy BITH_proxy Pob_relativa.
+
+
+*Proxys AROPE * Prevalencias rangos FAO
+
+CTABLES
+  /VLABELS VARIABLES=PMS_proxy BITH_proxy Pob_relativa Pob_severa P_moderada_pct_FAO 
+    P_grave_pct_FAO DISPLAY=LABEL
+  /TABLE PMS_proxy + BITH_proxy + Pob_relativa + Pob_severa BY P_moderada_pct_FAO [MEAN 
+    PCTPAREN40.2] + P_grave_pct_FAO [MEAN PCTPAREN40.2]
+  /CATEGORIES VARIABLES=PMS_proxy BITH_proxy Pob_relativa Pob_severa ORDER=A KEY=VALUE EMPTY=INCLUDE    
+  /CRITERIA CILEVEL=95.
+
+*Proxys AROPE * Prevalencias FAO (Sí/no FIES)
+
+CTABLES
+  /VLABELS VARIABLES=PMS_proxy BITH_proxy Pob_relativa Pob_severa P_FIES_pct_FAO P_NO_FIES_pct_FAO 
+    DISPLAY=LABEL
+  /TABLE PMS_proxy + BITH_proxy + Pob_relativa + Pob_severa BY P_FIES_pct_FAO [MEAN PCTPAREN40.2] + 
+    P_NO_FIES_pct_FAO [MEAN PCTPAREN40.2]
+  /CATEGORIES VARIABLES=PMS_proxy BITH_proxy Pob_relativa Pob_severa ORDER=A KEY=VALUE EMPTY=INCLUDE    
+  /CRITERIA CILEVEL=95.
+
+
+
+*Proxys AROPE * Prevalencias rangos OVI
+
+CTABLES
+  /VLABELS VARIABLES=PMS_proxy BITH_proxy Pob_relativa Pob_severa P_seguridad_pct_OVI 
+    P_temprana_pct_OVI P_moderada_pct_OVI P_grave_pct_OVI 
+    DISPLAY=LABEL
+  /TABLE PMS_proxy + BITH_proxy + Pob_relativa + Pob_severa BY P_seguridad_pct_OVI [MEAN 
+    PCTPAREN40.2] + P_temprana_pct_OVI [MEAN PCTPAREN40.2] + P_moderada_pct_OVI [MEAN PCTPAREN40.2] + 
+    P_grave_pct_OVI [MEAN PCTPAREN40.2]
+  /CATEGORIES VARIABLES=PMS_proxy BITH_proxy Pob_relativa Pob_severa ORDER=A KEY=VALUE EMPTY=INCLUDE    
+  /CRITERIA CILEVEL=95.
+
+
+*Proxys AROPE * Prevalencias OVI (Sí/no FIES)
+
+CTABLES
+  /VLABELS VARIABLES=PMS_proxy BITH_proxy Pob_relativa Pob_severa P_FIES_pct_OVI P_NO_FIES_pct_OVI 
+    DISPLAY=LABEL
+  /TABLE PMS_proxy + BITH_proxy + Pob_relativa + Pob_severa BY P_FIES_pct_OVI [MEAN PCTPAREN40.2] + 
+    P_NO_FIES_pct_OVI [MEAN PCTPAREN40.2]
+  /CATEGORIES VARIABLES=PMS_proxy BITH_proxy Pob_relativa Pob_severa ORDER=A KEY=VALUE EMPTY=INCLUDE    
+  /CRITERIA CILEVEL=95.
+
