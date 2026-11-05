@@ -1,0 +1,110 @@
+* Encoding: UTF-8.
+
+
+**Preparacion de variables para cálculo de PMS**
+
+WEIGHT OFF.
+
+FILTER OFF.
+USE ALL.
+EXECUTE.
+
+
+
+COMPUTE Calc_PMS3=F98_18 + F98_19.
+VARIABLE LABELS  Calc_PMS3 'No operar - variable para el cálculo PMS3.'.
+EXECUTE.
+
+RECODE E71 (0=SYSMIS) (1=1) (2=1) (3=0) (9=SYSMIS) INTO Calc_E71.
+VARIABLE LABELS  Calc_E71 'Recodificación E71 (0,1)'.
+EXECUTE.
+
+RECODE E73 (0=SYSMIS) (1=1) (2=1) (3=0) (9=SYSMIS) INTO Calc_E73.
+VARIABLE LABELS  Calc_E73 'Recodificación E73 (0,1)'.
+EXECUTE.
+
+RECODE E77 (0=SYSMIS) (1=1) (2=1) (3=0) (9=SYSMIS) INTO Calc_E77.
+VARIABLE LABELS  Calc_E77 'Recodificación E77 (0,1)'.
+EXECUTE.
+
+
+COMPUTE Calc_PMS5=Calc_E71 + Calc_E73 + Calc_E77.
+VARIABLE LABELS  Calc_PMS5 'No operar - variable para el cálculo PMS5'.
+EXECUTE.
+
+
+**Cálculo de las 9 variables de PMS (proxy)**
+**Tener en cuenta que es una adaptación del método 2021, y que codificamos NO TIENE, que es diferente a NO PUEDE PERMITIRSE
+**El item PC, se cambia por no disponer de PC, móvil o fijo.
+**Se mantiene el criterio de puntuar en PMS_Proxy en 4 ítems o más
+
+
+RECODE E83_3_2 (1=1) (2=0) (0=SYSMIS) (9=SYSMIS) (SYSMIS=SYSMIS) INTO PMS1_Vacaciones.
+VARIABLE LABELS  PMS1_Vacaciones 'No puede permitirse ir de vacaciones al menos una semana al año.'.    
+EXECUTE.
+
+RECODE F98_17 (0=1) (1=0) INTO PMS2_Carne.
+VARIABLE LABELS  PMS2_Carne 'No puede permitirse una comida de carne, pollo o pescado al menos cada dos días.'.
+EXECUTE.
+
+RECODE Calc_PMS3 (0=1) (1=0) (2=0) INTO PMS3_Temperatura.
+VARIABLE LABELS  PMS3_Temperatura 'No puede permitirse mantener la vivienda con una temperatura adecuada'.
+EXECUTE.
+
+RECODE F98_17 (0=1) (1=0) INTO PMS4_GastoImprevisto.
+VARIABLE LABELS  PMS4_GastoImprevisto 'No tiene capacidad para afrontar gastos imprevistos (800e)'.
+EXECUTE.
+
+RECODE Calc_PMS5 (0=0) (1=1) (2=1) (3=1) INTO PMS5_PagoVivienda.
+VARIABLE LABELS  PMS5_PagoVivienda 'Ha tenido retrasos en el pago de gastos relacionados con la vivienda principal (hipoteca o alquiler, recibos de gas, comunidad...) o en compras a plazos en los últimos 12 meses.'.
+EXECUTE.
+
+RECODE F98_11 (0=1) (1=0) INTO PMS6_Automovil.
+VARIABLE LABELS  PMS6_Automovil 'No dispone de un automóvil'.
+EXECUTE.
+
+RECODE F98_15 (0=1) (1=0) INTO PMS7_Ordenador.
+VARIABLE LABELS  PMS7_Ordenador 'No dispone de un ordenador personal'.
+EXECUTE.
+
+RECODE F98_13 (0=1) (1=0) INTO PMS7_movil.
+VARIABLE LABELS  PMS7_movil 'No dispone de un móvil'.
+EXECUTE.
+
+RECODE F98_14 (0=1) (1=0) INTO PMS7_fijo.
+VARIABLE LABELS  PMS7_fijo 'No dispone de un fijo'.
+EXECUTE.
+
+COMPUTE SUM_PMS7=PMS7_Ordenador + PMS7_movil + PMS7_fijo.
+EXECUTE.
+
+RECODE SUM_PMS7 (0=0) (1=0) (2=0) (3=1) INTO PMS7_Movil_Fijo_PC.
+VARIABLE LABELS  PMS7_Movil_Fijo_PC 'No dispone de Tlf Fijo, Movil y ordenador'.
+EXECUTE.
+
+RECODE F98_12 (0=1) (1=0) INTO PMS8_TV.
+VARIABLE LABELS  PMS8_TV 'No puede permitirse disponer de un televisor.'.
+EXECUTE.
+
+RECODE F98_10 (0=1) (1=0) INTO PMS9_Lavadora.
+VARIABLE LABELS  PMS9_Lavadora 'No puede permitirse disponer de una lavadora.'.
+EXECUTE.
+
+
+COMPUTE SUMA_PMS=PMS1_Vacaciones + PMS2_Carne + PMS3_Temperatura + PMS4_GastoImprevisto + PMS5_PagoVivienda 
++ PMS6_Automovil + PMS7_Movil_Fijo_PC + PMS8_TV + PMS9_Lavadora.
+VARIABLE LABELS  SUMA_PMS 'Suma items PMS'.
+EXECUTE.
+
+
+RECODE SUMA_PMS (Lowest thru 3=0) (4 thru 9=1) INTO PMS_proxy.
+VARIABLE LABELS  PMS_proxy 'PMS_proxy'.
+EXECUTE.
+
+
+DELETE VARIABLES Calc_PMS3 Calc_E71 Calc_E73 Calc_E77 Calc_PMS5 PMS7_Ordenador PMS7_movil PMS7_fijo SUM_PMS7.
+EXECUTE.
+
+
+
+
